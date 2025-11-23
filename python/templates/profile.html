@@ -1,0 +1,230 @@
+{% extends "base.html" %}
+
+{% block title %}Profile - {{ BANK_NAME }}{% endblock %}
+
+{% block content %}
+<div class="container my-4">
+    <!-- Breadcrumb -->
+    <nav aria-label="breadcrumb" class="mb-4">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="{{ url_for('dashboard') }}">Dashboard</a></li>
+            <li class="breadcrumb-item active" aria-current="page">Profile</li>
+        </ol>
+    </nav>
+
+    <!-- Profile Header -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card bg-primary text-white">
+                <div class="card-body">
+                    <div class="row align-items-center">
+                        <div class="col-auto">
+                            <div class="avatar-circle bg-white text-primary d-flex align-items-center justify-content-center" 
+                                 style="width: 80px; height: 80px; border-radius: 50%;">
+                                <i class="bi bi-person-fill fs-1"></i>
+                            </div>
+                        </div>
+                        <div class="col">
+                            <h2 class="mb-1">{{ current_user.get_full_name() }}</h2>
+                            <p class="mb-1 opacity-75">{{ current_user.email }}</p>
+                            <p class="mb-0 opacity-75">Account: {{ current_user.account_number }}</p>
+                        </div>
+                        <div class="col-auto text-end">
+                            <div class="badge bg-success fs-6">
+                                <i class="bi bi-check-circle me-1"></i>Active Account
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- Account Information -->
+        <div class="col-lg-8 mb-4">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="bi bi-person-lines-fill me-2"></i>Account Information
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row mb-3">
+                        <div class="col-sm-4">
+                            <strong>Full Name:</strong>
+                        </div>
+                        <div class="col-sm-8">
+                            {{ current_user.get_full_name() }}
+                        </div>
+                    </div>
+                    
+                    <div class="row mb-3">
+                        <div class="col-sm-4">
+                            <strong>Email Address:</strong>
+                        </div>
+                        <div class="col-sm-8">
+                            {{ current_user.email }}
+                        </div>
+                    </div>
+                    
+                    <div class="row mb-3">
+                        <div class="col-sm-4">
+                            <strong>Account Number:</strong>
+                        </div>
+                        <div class="col-sm-8">
+                            <code>{{ current_user.account_number }}</code>
+                        </div>
+                    </div>
+                    
+                    <div class="row mb-3">
+                        <div class="col-sm-4">
+                            <strong>Current Balance:</strong>
+                        </div>
+                        <div class="col-sm-8">
+                            <span class="fs-5 text-primary fw-bold">{{ current_user.balance | currency }}</span>
+                        </div>
+                    </div>
+                    
+                    <div class="row mb-3">
+                        <div class="col-sm-4">
+                            <strong>Account Created:</strong>
+                        </div>
+                        <div class="col-sm-8">
+                            {{ current_user.created_at | datetime('%B %d, %Y') }}
+                            <small class="text-muted">({{ profile_stats.account_age }} days ago)</small>
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-sm-4">
+                            <strong>Account Status:</strong>
+                        </div>
+                        <div class="col-sm-8">
+                            {% if current_user.is_active %}
+                            <span class="badge bg-success">
+                                <i class="bi bi-check-circle me-1"></i>Active
+                            </span>
+                            {% else %}
+                            <span class="badge bg-danger">
+                                <i class="bi bi-x-circle me-1"></i>Inactive
+                            </span>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Account Activity Summary -->
+            <div class="card mt-4">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="bi bi-activity me-2"></i>Account Activity Summary
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row text-center">
+                        <div class="col-md-4 mb-3">
+                            <div class="card bg-light h-100">
+                                <div class="card-body">
+                                    <i class="bi bi-hash text-primary fs-2 mb-2"></i>
+                                    <h4 class="card-title">{{ profile_stats.transaction_count }}</h4>
+                                    <p class="card-text">Total Transactions</p>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-4 mb-3">
+                            <div class="card bg-light h-100">
+                                <div class="card-body">
+                                    <i class="bi bi-calendar3 text-success fs-2 mb-2"></i>
+                                    <h5 class="card-title">
+                                        {% if profile_stats.first_transaction_date %}
+                                        {{ profile_stats.first_transaction_date | datetime('%b %d, %Y') }}
+                                        {% else %}
+                                        No transactions
+                                        {% endif %}
+                                    </h5>
+                                    <p class="card-text">First Transaction</p>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-4 mb-3">
+                            <div class="card bg-light h-100">
+                                <div class="card-body">
+                                    <i class="bi bi-calendar-check text-info fs-2 mb-2"></i>
+                                    <h5 class="card-title">
+                                        {% if profile_stats.last_transaction_date %}
+                                        {{ profile_stats.last_transaction_date | datetime('%b %d, %Y') }}
+                                        {% else %}
+                                        No transactions
+                                        {% endif %}
+                                    </h5>
+                                    <p class="card-text">Latest Transaction</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Sidebar -->
+        <div class="col-lg-4">
+            <!-- Quick Actions -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h6 class="mb-0">
+                        <i class="bi bi-lightning-charge me-2"></i>Quick Actions
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <div class="d-grid gap-2">
+                        <a href="{{ url_for('dashboard') }}" class="btn btn-primary">
+                            <i class="bi bi-speedometer2 me-2"></i>View Dashboard
+                        </a>
+                        <a href="{{ url_for('search') }}" class="btn btn-outline-primary">
+                            <i class="bi bi-search me-2"></i>Search Transactions
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Security Information -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h6 class="mb-0">
+                        <i class="bi bi-shield-check me-2"></i>Security Information
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <div class="alert alert-info small" role="alert">
+                        <i class="bi bi-info-circle me-2"></i>
+                        <strong>Security Tip:</strong> Always log out when using shared computers and never share your login credentials.
+                    </div>
+                </div>
+            </div>
+            
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Print styles for profile
+document.addEventListener('DOMContentLoaded', function() {
+    const printStyle = document.createElement('style');
+    printStyle.textContent = `
+        @media print {
+            .navbar, .breadcrumb, .btn, .alert-warning { display: none !important; }
+            .container { width: 100% !important; max-width: none !important; }
+            .card { border: 1px solid #000 !important; page-break-inside: avoid; }
+            .bg-primary { background-color: #0066cc !important; }
+        }
+    `;
+    document.head.appendChild(printStyle);
+});
+</script>
+{% endblock %}

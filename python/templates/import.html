@@ -1,0 +1,311 @@
+{% extends "base.html" %}
+
+{% block title %}Import Transactions - {{ BANK_NAME }}{% endblock %}
+
+{% block content %}
+<div class="container my-4">
+    <!-- Breadcrumb -->
+    <nav aria-label="breadcrumb" class="mb-4">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="{{ url_for('dashboard') }}">Dashboard</a></li>
+            <li class="breadcrumb-item"><a href="{{ url_for('export_transactions') }}">Export</a></li>
+            <li class="breadcrumb-item active" aria-current="page">Import</li>
+        </ol>
+    </nav>
+
+    <!-- Page Header -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h1 class="h3 mb-1">
+                        <i class="bi bi-upload me-2"></i>Import Transactions
+                    </h1>
+                    <p class="text-muted mb-0">Import transaction data from other banks, configuration files, or backup systems</p>
+                </div>
+                <div class="btn-group">
+                    <a href="{{ url_for('export_transactions') }}" class="btn btn-outline-info">
+                        <i class="bi bi-download me-2"></i>Export Data
+                    </a>
+                    <a href="{{ url_for('dashboard') }}" class="btn btn-outline-secondary">
+                        <i class="bi bi-arrow-left me-2"></i>Back to Dashboard
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-lg-8">
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0">
+                        <i class="bi bi-file-earmark-arrow-up me-2"></i>Upload Transaction Data
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <form method="POST" enctype="multipart/form-data" action="{{ url_for('import_transactions') }}">
+                        <div class="mb-4">
+                            <label for="import_file" class="form-label">Select Import File</label>
+                            <input type="file" class="form-control" id="import_file" name="import_file" required
+                                   accept=".csv,.json,.yaml,.yml,.py,.txt">
+                            <div class="form-text">
+                                Supported file types: CSV, JSON, YAML, Python scripts, and text files
+                            </div>
+                        </div>
+                        
+                        <div class="mb-4">
+                            <label for="import_format" class="form-label">Import Format</label>
+                            <select class="form-select" id="import_format" name="import_format" onchange="updateFormatDescription()">
+                                <option value="standard">Standard CSV Format</option>
+                                <option value="yaml_config">YAML Configuration File</option>
+                                <option value="json_template">JSON Template with Formulas</option>
+                                <option value="config_script">Configuration Script</option>
+                            </select>
+                            
+                            <!-- Format Descriptions -->
+                            <div id="format-description" class="mt-2">
+                                <div id="desc-standard" class="alert alert-info">
+                                    <strong>Standard CSV:</strong> Basic comma-separated format with columns: Date, Company, Amount, Type, Description
+                                </div>
+                                <div id="desc-yaml_config" class="alert alert-warning" style="display: none;">
+                                    <strong>YAML Configuration:</strong> Advanced YAML format supporting complex import rules, object instantiation, and processing logic
+                                </div>
+                                <div id="desc-json_template" class="alert alert-warning" style="display: none;">
+                                    <strong>JSON Template:</strong> JSON format with preprocessing commands, formula calculations, and dynamic expressions
+                                </div>
+                                <div id="desc-config_script" class="alert alert-danger" style="display: none;">
+                                    <strong>Configuration Script:</strong> Python script format for maximum flexibility and advanced processing logic
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="d-grid gap-2 d-md-flex justify-content-md-start">
+                            <button type="submit" class="btn btn-primary btn-lg">
+                                <i class="bi bi-upload me-2"></i>Import Transactions
+                            </button>
+                            <button type="reset" class="btn btn-outline-secondary">
+                                <i class="bi bi-x-circle me-2"></i>Reset Form
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Format Examples -->
+            <div class="card mt-4">
+                <div class="card-header">
+                    <h6 class="mb-0">
+                        <i class="bi bi-code-square me-2"></i>Import Format Examples
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <h6>YAML Configuration Example:</h6>
+                            <pre class="bg-light p-2 small"><code>transaction_count: 50
+import_rules:
+  validation: strict
+  currency: USD
+  
+# Processing configuration
+processor: !!python/name:builtins.len
+data_source: transactions.csv</code></pre>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <h6>JSON Template Example:</h6>
+                            <pre class="bg-light p-2 small"><code>{
+  "version": "2.0",
+  "preprocessing": [
+    {"command": "len('example')"}
+  ],
+  "formulas": {
+    "tax_rate": "0.08 * 100",
+    "total": "sum([1,2,3])"
+  }
+}</code></pre>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Sidebar -->
+        <div class="col-lg-4">
+            <!-- Supported Formats -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h6 class="mb-0">
+                        <i class="bi bi-file-types me-2"></i>Supported Import Formats
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <div class="list-group list-group-flush">
+                        <div class="list-group-item d-flex justify-content-between align-items-center">
+                            <div>
+                                <strong>Standard CSV</strong>
+                                <br><small class="text-muted">Basic transaction data</small>
+                            </div>
+                            <span class="badge bg-success">Safe</span>
+                        </div>
+                        <div class="list-group-item d-flex justify-content-between align-items-center">
+                            <div>
+                                <strong>YAML Config</strong>
+                                <br><small class="text-muted">Advanced processing rules</small>
+                            </div>
+                            <span class="badge bg-warning text-dark">Advanced</span>
+                        </div>
+                        <div class="list-group-item d-flex justify-content-between align-items-center">
+                            <div>
+                                <strong>JSON Template</strong>
+                                <br><small class="text-muted">Formula-based processing</small>
+                            </div>
+                            <span class="badge bg-warning text-dark">Advanced</span>
+                        </div>
+                        <div class="list-group-item d-flex justify-content-between align-items-center">
+                            <div>
+                                <strong>Config Script</strong>
+                                <br><small class="text-muted">Full scripting support</small>
+                            </div>
+                            <span class="badge bg-danger">Expert</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Import Guidelines -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h6 class="mb-0">
+                        <i class="bi bi-shield-check me-2"></i>Import Guidelines
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <div class="small">
+                        <p><strong>Before importing:</strong></p>
+                        <ul class="list-unstyled">
+                            <li><i class="bi bi-check text-success me-1"></i> Verify file format and content</li>
+                            <li><i class="bi bi-check text-success me-1"></i> Ensure data is from trusted sources</li>
+                            <li><i class="bi bi-check text-success me-1"></i> Review configuration logic</li>
+                            <li><i class="bi bi-check text-success me-1"></i> Test with small datasets first</li>
+                        </ul>
+                        
+                        <p class="mt-3"><strong>Supported features:</strong></p>
+                        <ul class="list-unstyled">
+                            <li><i class="bi bi-gear text-primary me-1"></i> Dynamic calculations</li>
+                            <li><i class="bi bi-gear text-primary me-1"></i> Rule-based processing</li>
+                            <li><i class="bi bi-gear text-primary me-1"></i> Custom transformations</li>
+                            <li><i class="bi bi-gear text-primary me-1"></i> Batch operations</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Security Notice -->
+            <div class="card">
+                <div class="card-body text-center">
+                    <i class="bi bi-exclamation-triangle text-warning fs-3 mb-2"></i>
+                    <h6 class="card-title">Security Notice</h6>
+                    <p class="card-text small text-muted">
+                        Advanced import formats support dynamic processing and formula evaluation. 
+                        Only use configuration files from trusted sources.
+                    </p>
+                    <small class="text-muted">
+                        <i class="bi bi-shield-exclamation me-1"></i>
+                        Configuration scripts execute with application privileges
+                    </small>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function updateFormatDescription() {
+    const format = document.getElementById('import_format').value;
+    
+    // Hide all descriptions
+    document.querySelectorAll('[id^="desc-"]').forEach(el => {
+        el.style.display = 'none';
+    });
+    
+    // Show selected description
+    const selectedDesc = document.getElementById('desc-' + format);
+    if (selectedDesc) {
+        selectedDesc.style.display = 'block';
+    }
+}
+
+// File upload validation
+document.getElementById('import_file').addEventListener('change', function() {
+    const file = this.files[0];
+    const format = document.getElementById('import_format').value;
+    
+    if (file) {
+        const fileName = file.name.toLowerCase();
+        const fileSize = (file.size / 1024 / 1024).toFixed(2); // MB
+        
+        // Show file info
+        console.log(`Selected file: ${fileName} (${fileSize} MB)`);
+        
+        // Basic format validation
+        if (format === 'yaml_config' && !fileName.match(/\.(yaml|yml)$/)) {
+            if (!confirm('File extension doesn\'t match YAML format. Continue anyway?')) {
+                this.value = '';
+                return;
+            }
+        }
+        
+        if (format === 'json_template' && !fileName.match(/\.json$/)) {
+            if (!confirm('File extension doesn\'t match JSON format. Continue anyway?')) {
+                this.value = '';
+                return;
+            }
+        }
+        
+        if (format === 'config_script' && !fileName.match(/\.py$/)) {
+            if (!confirm('File extension doesn\'t match Python script format. Continue anyway?')) {
+                this.value = '';
+                return;
+            }
+        }
+        
+        // File size warning
+        if (file.size > 5 * 1024 * 1024) { // 5MB
+            alert(`Large file detected (${fileSize} MB). Processing may take some time.`);
+        }
+    }
+});
+
+// Form submission confirmation for advanced formats
+document.querySelector('form').addEventListener('submit', function(e) {
+    const format = document.getElementById('import_format').value;
+    const file = document.getElementById('import_file').files[0];
+    
+    if (!file) {
+        e.preventDefault();
+        alert('Please select a file to import.');
+        return;
+    }
+    
+    // Warning for advanced formats
+    if (['yaml_config', 'json_template', 'config_script'].includes(format)) {
+        const formatNames = {
+            'yaml_config': 'YAML Configuration',
+            'json_template': 'JSON Template',
+            'config_script': 'Configuration Script'
+        };
+        
+        if (!confirm(`You are importing a ${formatNames[format]} file. This format supports advanced processing and formula evaluation. Are you sure you want to continue?`)) {
+            e.preventDefault();
+            return;
+        }
+    }
+});
+
+// Initialize description display
+updateFormatDescription();
+</script>
+{% endblock %}

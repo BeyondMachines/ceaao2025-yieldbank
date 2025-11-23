@@ -1,0 +1,338 @@
+{% extends "base.html" %}
+
+{% block title %}Search Transactions - {{ BANK_NAME }}{% endblock %}
+
+{% block content %}
+<div class="container my-4">
+    <!-- Page Header -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h1 class="h3 mb-1">Search Transactions</h1>
+                    <p class="text-muted mb-0">Find transactions by company name or date range</p>
+                </div>
+                <div>
+                    <a href="{{ url_for('dashboard') }}" class="btn btn-outline-secondary">
+                        <i class="bi bi-arrow-left me-2"></i>Back to Dashboard
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Search Form -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0">
+                        <i class="bi bi-search me-2"></i>Search Criteria
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <form method="POST" action="{{ url_for('search') }}">
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="company" class="form-label">Company Name</label>
+                                <div class="input-group">
+                                    <span class="input-group-text">
+                                        <i class="bi bi-building"></i>
+                                    </span>
+                                    <input 
+                                        type="text" 
+                                        class="form-control" 
+                                        id="company" 
+                                        name="company"
+                                        placeholder="Enter company name..."
+                                        value="{{ request.form.company or request.args.get('company', '') }}"
+                                    >
+                                </div>
+                                <div class="form-text">Search for transactions from a specific company</div>
+                            </div>
+                            
+                            <div class="col-md-3 mb-3">
+                                <label for="date_from" class="form-label">From Date</label>
+                                <div class="input-group">
+                                    <span class="input-group-text">
+                                        <i class="bi bi-calendar3"></i>
+                                    </span>
+                                    <input 
+                                        type="date" 
+                                        class="form-control" 
+                                        id="date_from" 
+                                        name="date_from"
+                                        value="{{ request.form.date_from or '' }}"
+                                    >
+                                </div>
+                            </div>
+                            
+                            <div class="col-md-3 mb-3">
+                                <label for="date_to" class="form-label">To Date</label>
+                                <div class="input-group">
+                                    <span class="input-group-text">
+                                        <i class="bi bi-calendar3"></i>
+                                    </span>
+                                    <input 
+                                        type="date" 
+                                        class="form-control" 
+                                        id="date_to" 
+                                        name="date_to"
+                                        value="{{ request.form.date_to or '' }}"
+                                    >
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="row">
+                            <div class="col-12">
+                                <div class="btn-group" role="group">
+                                    <button type="submit" class="btn btn-primary">
+                                        <i class="bi bi-search me-2"></i>Search Transactions
+                                    </button>
+                                    <a href="{{ url_for('search') }}" class="btn btn-outline-secondary">
+                                        <i class="bi bi-x-circle me-2"></i>Clear
+                                    </a>
+                                </div>
+                                
+                                <!-- Quick Date Filters -->
+                                <div class="mt-3">
+                                    <small class="text-muted me-2">Quick filters:</small>
+                                    <div class="btn-group btn-group-sm" role="group">
+                                        <button type="button" class="btn btn-outline-info" onclick="setDateRange(7)">Last 7 days</button>
+                                        <button type="button" class="btn btn-outline-info" onclick="setDateRange(30)">Last 30 days</button>
+                                        <button type="button" class="btn btn-outline-info" onclick="setDateRange(90)">Last 3 months</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Search Results -->
+    {% if search_performed %}
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">
+                        <i class="bi bi-list-ul me-2"></i>Search Results
+                    </h5>
+                    {% if transactions %}
+                    <span class="badge bg-primary">{{ transactions|length }} result(s)</span>
+                    {% endif %}
+                </div>
+                
+                <div class="card-body p-0">
+                    {% if transactions %}
+                    <div class="table-responsive">
+                        <table class="table table-hover mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Date</th>
+                                    <th>Company</th>
+                                    <th>Description</th>
+                                    <th>Type</th>
+                                    <th class="text-end">Amount</th>
+                                    <th class="text-end">Balance</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for transaction in transactions %}
+                                <tr>
+                                    <td>
+                                        <div class="fw-semibold">{{ transaction.date | datetime('%b %d, %Y') }}</div>
+                                        <small class="text-muted">{{ transaction.date | datetime('%I:%M %p') }}</small>
+                                    </td>
+                                    <td>
+                                        <div class="fw-semibold">{{ transaction.company }}</div>
+                                        {% if transaction.category %}
+                                        <small class="badge bg-light text-dark">{{ transaction.category }}</small>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if transaction.description %}
+                                        {{ transaction.description[:50] }}
+                                        {% if transaction.description|length > 50 %}...{% endif %}
+                                        {% else %}
+                                        <span class="text-muted">No description</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if transaction.is_credit() %}
+                                        <span class="badge bg-success">
+                                            <i class="bi bi-arrow-down me-1"></i>Credit
+                                        </span>
+                                        {% else %}
+                                        <span class="badge bg-danger">
+                                            <i class="bi bi-arrow-up me-1"></i>Debit
+                                        </span>
+                                        {% endif %}
+                                    </td>
+                                    <td class="text-end">
+                                        <span class="{{ 'transaction-credit' if transaction.is_credit() else 'transaction-debit' }} fw-semibold">
+                                            {{ '+' if transaction.is_credit() else '-' }}{{ transaction.amount | currency }}
+                                        </span>
+                                    </td>
+                                    <td class="text-end fw-semibold">
+                                        {{ transaction.balance_after | currency }}
+                                    </td>
+                                    <td>
+                                        <a href="{{ url_for('transaction_detail', transaction_id=transaction.id) }}" 
+                                           class="btn btn-sm btn-outline-primary">
+                                            <i class="bi bi-eye me-1"></i>View
+                                        </a>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    
+                    <!-- Export Options -->
+                    <div class="card-footer">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <small class="text-muted">
+                                    Showing {{ transactions|length }} transactions
+                                </small>
+                            </div>
+                            <div class="btn-group btn-group-sm">
+                                <button type="button" class="btn btn-outline-secondary" onclick="printResults()">
+                                    <i class="bi bi-printer me-1"></i>Print
+                                </button>
+                                <button type="button" class="btn btn-outline-secondary" onclick="exportToCSV()">
+                                    <i class="bi bi-download me-1"></i>Export
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    {% else %}
+                    <div class="text-center py-5">
+                        <i class="bi bi-search fs-1 text-muted mb-3"></i>
+                        <h5 class="text-muted">No transactions found</h5>
+                        <p class="text-muted">Try adjusting your search criteria or expanding the date range.</p>
+                        <div class="mt-3">
+                            <small class="text-muted">Search tips:</small>
+                            <ul class="list-unstyled small text-muted mt-1">
+                                <li>• Try partial company names</li>
+                                <li>• Expand your date range</li>
+                                <li>• Check for typos in company names</li>
+                            </ul>
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+    {% else %}
+    <!-- No Search Performed -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-body text-center py-5">
+                    <i class="bi bi-search fs-1 text-muted mb-3"></i>
+                    <h5>Search Your Transactions</h5>
+                    <p class="text-muted">Use the form above to search for specific transactions by company name or date range.</p>
+                    
+                    <div class="row justify-content-center mt-4">
+                        <div class="col-md-8">
+                            <div class="row">
+                                <div class="col-sm-6 mb-3">
+                                    <div class="card bg-light">
+                                        <div class="card-body">
+                                            <i class="bi bi-building text-primary fs-3"></i>
+                                            <h6 class="mt-2">Company Search</h6>
+                                            <small class="text-muted">Find all transactions with a specific company</small>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-sm-6 mb-3">
+                                    <div class="card bg-light">
+                                        <div class="card-body">
+                                            <i class="bi bi-calendar-range text-primary fs-3"></i>
+                                            <h6 class="mt-2">Date Range</h6>
+                                            <small class="text-muted">Filter transactions by specific time periods</small>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Quick date range functions
+function setDateRange(days) {
+    const today = new Date();
+    const fromDate = new Date(today.getTime() - (days * 24 * 60 * 60 * 1000));
+    
+    document.getElementById('date_to').value = today.toISOString().split('T')[0];
+    document.getElementById('date_from').value = fromDate.toISOString().split('T')[0];
+}
+
+// Print results function
+function printResults() {
+    const printContent = document.querySelector('.table-responsive').innerHTML;
+    const printWindow = window.open('', '', 'height=600,width=800');
+    printWindow.document.write(`
+        <html>
+            <head>
+                <title>Transaction Search Results</title>
+                <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+            </head>
+            <body>
+                <div class="container">
+                    <h2 class="mb-3">{{ BANK_NAME }} - Transaction Search Results</h2>
+                    <p class="text-muted">Generated on: ${new Date().toLocaleDateString()}</p>
+                    ${printContent}
+                </div>
+            </body>
+        </html>
+    `);
+    printWindow.document.close();
+    printWindow.print();
+}
+
+// Simple CSV export function (minimal JavaScript as requested)
+function exportToCSV() {
+    // In a real application, this would be handled server-side
+    // This is a simple client-side implementation for the training environment
+    alert('CSV export functionality would typically be implemented server-side for security reasons. In a real application, this would generate and download a CSV file of the search results.');
+}
+
+// Form validation
+document.querySelector('form').addEventListener('submit', function(e) {
+    const company = document.getElementById('company').value.trim();
+    const dateFrom = document.getElementById('date_from').value;
+    const dateTo = document.getElementById('date_to').value;
+    
+    // At least one criteria must be provided
+    if (!company && !dateFrom && !dateTo) {
+        e.preventDefault();
+        alert('Please provide at least one search criteria (company name or date range).');
+        return false;
+    }
+    
+    // Validate date range
+    if (dateFrom && dateTo && new Date(dateFrom) > new Date(dateTo)) {
+        e.preventDefault();
+        alert('The start date cannot be after the end date.');
+        return false;
+    }
+});
+</script>
+{% endblock %}

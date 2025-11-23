@@ -1,0 +1,334 @@
+{% extends "base.html" %}
+
+{% block title %}Transaction Details - {{ BANK_NAME }}{% endblock %}
+
+{% block content %}
+<div class="container my-4">
+    <!-- Breadcrumb -->
+    <nav aria-label="breadcrumb" class="mb-4">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="{{ url_for('dashboard') }}">Dashboard</a></li>
+            <li class="breadcrumb-item active" aria-current="page">Transaction Details</li>
+        </ol>
+    </nav>
+
+    <!-- Transaction Header -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-start">
+                <div>
+                    <h1 class="h3 mb-1">Transaction Details</h1>
+                    <p class="text-muted mb-0">Reference: {{ transaction.reference_number }}</p>
+                </div>
+                <div class="text-end">
+                    {% if transaction.is_credit() %}
+                    <span class="badge bg-success fs-6">
+                        <i class="bi bi-arrow-down me-1"></i>Credit Transaction
+                    </span>
+                    {% else %}
+                    <span class="badge bg-danger fs-6">
+                        <i class="bi bi-arrow-up me-1"></i>Debit Transaction
+                    </span>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- Main Transaction Details -->
+        <div class="col-lg-8 mb-4">
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0">
+                        <i class="bi bi-receipt me-2"></i>Transaction Information
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row mb-3">
+                        <div class="col-sm-4">
+                            <strong>Date & Time:</strong>
+                        </div>
+                        <div class="col-sm-8">
+                            {{ transaction.date | datetime('%B %d, %Y at %I:%M %p') }}
+                        </div>
+                    </div>
+                    
+                    <div class="row mb-3">
+                        <div class="col-sm-4">
+                            <strong>Company:</strong>
+                        </div>
+                        <div class="col-sm-8">
+                            {{ transaction.company }}
+                        </div>
+                    </div>
+                    
+                    <div class="row mb-3">
+                        <div class="col-sm-4">
+                            <strong>Transaction Type:</strong>
+                        </div>
+                        <div class="col-sm-8">
+                            <span class="badge {{ 'bg-success' if transaction.is_credit() else 'bg-danger' }}">
+                                {{ transaction.transaction_type.title() }}
+                            </span>
+                        </div>
+                    </div>
+
+                    <div class="row mb-3">
+                        <div class="col-sm-4">
+                            <strong>Transaction Holder:</strong>
+                        </div>
+                        <div class="col-sm-8">
+                            <span class="badge {{ 'bg-success' if transaction.is_credit() else 'bg-danger' }}">
+                                {{ transaction.user.get_full_name() }}
+                            </span>
+                        </div>
+                    </div>
+
+                    <div class="row mb-3">
+                        <div class="col-sm-4">
+                            <strong>Amount:</strong>
+                        </div>
+                        <div class="col-sm-8">
+                            <span class="fs-4 {{ 'transaction-credit' if transaction.is_credit() else 'transaction-debit' }} fw-bold">
+                                {{ '+' if transaction.is_credit() else '-' }}{{ transaction.amount | currency }}
+                            </span>
+                        </div>
+                    </div>
+                    
+                    <div class="row mb-3">
+                        <div class="col-sm-4">
+                            <strong>Balance After:</strong>
+                        </div>
+                        <div class="col-sm-8">
+                            <span class="fs-5 fw-semibold">{{ transaction.balance_after | currency }}</span>
+                        </div>
+                    </div>
+                    
+                    {% if transaction.category %}
+                    <div class="row mb-3">
+                        <div class="col-sm-4">
+                            <strong>Category:</strong>
+                        </div>
+                        <div class="col-sm-8">
+                            <span class="badge bg-secondary">{{ transaction.category }}</span>
+                        </div>
+                    </div>
+                    {% endif %}
+                    
+                    <div class="row mb-3">
+                        <div class="col-sm-4">
+                            <strong>Reference Number:</strong>
+                        </div>
+                        <div class="col-sm-8">
+                            <code>{{ transaction.reference_number }}</code>
+                        </div>
+                    </div>
+                    
+                    {% if transaction.description %}
+                    <div class="row mb-3">
+                        <div class="col-sm-4">
+                            <strong>Description:</strong>
+                        </div>
+                        <div class="col-sm-8">
+                            {{ transaction.description }}
+                        </div>
+                    </div>
+                    {% endif %}
+
+                    <!-- User Note Section -->
+                    <div class="row">
+                        <div class="col-sm-4">
+                            <strong>Personal Note:</strong>
+                        </div>
+                        <div class="col-sm-8">
+                            {% if rendered_note %}
+                            <div class="mb-2">
+                                <!-- VULNERABLE: Rendered template content (allows template injection) -->
+                                {{ rendered_note | safe }}
+                            </div>
+                            {% elif transaction.note %}
+                            <div class="mb-2">
+                                <!-- Fallback: Raw note content if rendering failed -->
+                                {{ transaction.note }}
+                            </div>
+                            {% endif %}
+                            <button type="button" class="btn btn-outline-primary btn-sm" data-bs-toggle="modal" data-bs-target="#noteModal">
+                                <i class="bi bi-receipt me-1"></i>{{ 'Edit Note' if transaction.note else 'Add Note' }}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Action Buttons -->
+            <div class="card mt-4">
+                <div class="card-body">
+                    <h6 class="card-title">Actions</h6>
+                    <div class="btn-group flex-wrap" role="group">
+                        <button type="button" class="btn btn-outline-primary" onclick="window.print()">
+                            <i class="bi bi-printer me-2"></i>Print Receipt
+                        </button>
+                        <a href="{{ url_for('search') }}?company={{ transaction.company }}" class="btn btn-outline-secondary">
+                            <i class="bi bi-search me-2"></i>Find Similar
+                        </a>
+                        <a href="{{ url_for('dashboard') }}" class="btn btn-outline-info">
+                            <i class="bi bi-arrow-left me-2"></i>Back to Dashboard
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Sidebar with Related Information -->
+        <div class="col-lg-4">
+            <!-- Account Summary -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h6 class="mb-0">
+                        <i class="bi bi-person-circle me-2"></i>Account Summary
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <div class="mb-2">
+                        <small class="text-muted">Account Holder</small>
+                        <div class="fw-semibold">{{ current_user.get_full_name() }}</div>
+                    </div>
+                    <div class="mb-2">
+                        <small class="text-muted">Account Number</small>
+                        <div class="fw-semibold">{{ current_user.account_number }}</div>
+                    </div>
+                    <div>
+                        <small class="text-muted">Current Balance</small>
+                        <div class="fw-semibold text-primary">{{ current_user.balance | currency }}</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Related Transactions -->
+            {% if related_transactions %}
+            <div class="card">
+                <div class="card-header">
+                    <h6 class="mb-0">
+                        <i class="bi bi-link me-2"></i>Related Transactions
+                    </h6>
+                    <small class="text-muted">Other transactions with {{ transaction.company }}</small>
+                </div>
+                <div class="card-body p-0">
+                    <div class="list-group list-group-flush">
+                        {% for related in related_transactions %}
+                        <a href="{{ url_for('transaction_detail', transaction_id=related.id) }}" 
+                           class="list-group-item list-group-item-action">
+                            <div class="d-flex w-100 justify-content-between align-items-center">
+                                <div>
+                                    <div class="fw-semibold">{{ related.date | datetime('%b %d, %Y') }}</div>
+                                    <small class="text-muted">{{ related.transaction_type.title() }}</small>
+                                </div>
+                                <span class="{{ 'transaction-credit' if related.is_credit() else 'transaction-debit' }} fw-semibold">
+                                    {{ '+' if related.is_credit() else '-' }}{{ related.amount | currency }}
+                                </span>
+                            </div>
+                        </a>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- Security Notice -->
+            <div class="card mt-4">
+                <div class="card-body text-center">
+                    <i class="bi bi-shield-check text-success fs-3 mb-2"></i>
+                    <h6 class="card-title">Transaction Verified</h6>
+                    <p class="card-text small text-muted">
+                        This transaction has been verified and processed securely through our encrypted systems.
+                    </p>
+                    <small class="text-muted">
+                        <i class="bi bi-calendar3 me-1"></i>
+                        Processed on {{ transaction.date | datetime('%B %d, %Y') }}
+                    </small>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Note Edit Modal -->
+<div class="modal fade" id="noteModal" tabindex="-1" aria-labelledby="noteModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <form method="POST" action="{{ url_for('transaction_detail', transaction_id=transaction.id) }}">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="noteModalLabel">
+                        <i class="bi bi-pencil me-2"></i>{{ 'Edit Personal Note' if transaction.note else 'Add Personal Note' }}
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="transaction_note" class="form-label">Note Content</label>
+                        <textarea class="form-control" id="transaction_note" name="transaction_note" rows="6" 
+                                  placeholder="Add your personal note about this transaction...">{{ transaction.note or '' }}</textarea>
+                        <div class="form-text">
+                            <i class="bi bi-info-circle me-1"></i>
+                            You can add personal notes, reminders, or additional context about this transaction.
+                            HTML formatting is supported for rich content.
+                        </div>
+                    </div>
+
+                    <div class="alert alert-info">
+                        <i class="bi bi-lightbulb me-2"></i>
+                        <strong>Tip:</strong> Use HTML tags like &lt;b&gt;, &lt;i&gt;, &lt;u&gt; for formatting, 
+                        or add links with &lt;a href="..."&gt;...&lt;/a&gt;
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                        <i class="bi bi-x-circle me-1"></i>Cancel
+                    </button>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-check-circle me-1"></i>Save Note
+                    </button>
+                    {% if transaction.note %}
+                    <button type="button" id="clearNoteBtn" class="btn btn-outline-danger">
+                        <i class="bi bi-trash me-1"></i>Clear Note
+                    </button>
+                    {% endif %}
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Auto-focus on print button for accessibility
+document.addEventListener('DOMContentLoaded', function() {
+    // Add print styles
+    const printStyle = document.createElement('style');
+    printStyle.textContent = `
+        @media print {
+            .navbar, .breadcrumb, .btn-group, .card:last-child { display: none !important; }
+            .container { width: 100% !important; max-width: none !important; }
+        }
+    `;
+    document.head.appendChild(printStyle);
+    
+    // Handle clear note button
+    const clearButton = document.getElementById('clearNoteBtn');
+    if (clearButton) {
+        clearButton.addEventListener('click', function(e) {
+            // Clear the textarea content and submit the form
+            const textarea = document.getElementById('transaction_note');
+            const form = clearButton.closest('form');
+            if (textarea && form) {
+                textarea.value = '';
+                form.submit();
+            }
+        });
+    }
+});
+</script>
+{% endblock %}

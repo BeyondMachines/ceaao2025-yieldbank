@@ -1,0 +1,139 @@
+{% extends "base.html" %}
+
+{% block title %}Home - {{ BANK_NAME }}{% endblock %}
+
+{% block content %}
+<div class="container my-5">
+    <!-- Hero Section -->
+    <div class="row align-items-center mb-5">
+        <div class="col-lg-8">
+            <h1 class="display-4 fw-bold text-primary">Welcome to {{ BANK_NAME }} Financial</h1>
+            <p class="lead text-muted">Your trusted partner in digital banking solutions and financial services.</p>
+            
+            {% if not current_user.is_authenticated %}
+            <p class="mt-4">
+                <a href="{{ url_for('login') }}" class="btn btn-primary btn-lg me-3">
+                    <i class="bi bi-box-arrow-in-right me-2"></i>Access Your Account
+                </a>
+                <small class="text-muted d-block mt-2">
+                    <i class="bi bi-info-circle me-1"></i>
+                    This is a training environment.
+                </small>
+            </p>
+            {% else %}
+            <p class="mt-4">
+                <a href="{{ url_for('dashboard') }}" class="btn btn-primary btn-lg">
+                    <i class="bi bi-speedometer2 me-2"></i>Go to Dashboard
+                </a>
+            </p>
+            {% endif %}
+        </div>
+        <div class="col-lg-4 text-center">
+            <div class="card bg-primary text-white">
+                <div class="card-body text-center">
+                    <i class="bi bi-cpu display-1 text-white"></i>
+                    <div class="mb-2">
+                        {% for i in range(1, 6) %}
+                            {% if i <= stats.average_score %}
+                                <i class="bi bi-star-fill"></i>
+                            {% elif i - 0.5 <= stats.average_score %}
+                                <i class="bi bi-star-half"></i>
+                            {% else %}
+                                <i class="bi bi-star"></i>
+                            {% endif %}
+                        {% endfor %}
+                    </div>
+                    <p class="mb-0">
+                        <a class="text-white" href="{{ url_for('feedback_list') }}">Customer Rating</a>
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bank Statistics -->
+    <div class="row mb-5">
+        <div class="col-12">
+            <h2 class="h4 mb-4">Overview</h2>
+        </div>
+        <div class="col-md-3 mb-3">
+            <div class="card card-stats h-100">
+                <div class="card-body text-center">
+                    <div class="d-flex align-items-center justify-content-center mb-3">
+                        <i class="bi bi-people-fill fs-1"></i>
+                    </div>
+                    <h3 class="card-title">{{ "{:,}".format(stats.total_users) }}</h3>
+                    <p class="card-text">Active Customers</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3 mb-3">
+            <div class="card card-stats h-100">
+                <div class="card-body text-center">
+                    <div class="d-flex align-items-center justify-content-center mb-3">
+                        <i class="bi bi-arrow-left-right fs-1"></i>
+                    </div>
+                    <h3 class="card-title">{{ "{:,}".format(stats.total_transactions) }}</h3>
+                    <p class="card-text">Total Transactions</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3 mb-3">
+            <div class="card card-stats h-100">
+                <div class="card-body text-center">
+                    <div class="d-flex align-items-center justify-content-center mb-3">
+                        <i class="bi bi-currency-dollar fs-1"></i>
+                    </div>
+                    <h3 class="card-title">{{ stats.total_volume | currency }}</h3>
+                    <p class="card-text">Total Volume</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3 mb-3">
+            <div class="card card-stats h-100">
+                <div class="card-body text-center">
+                    <div class="d-flex align-items-center justify-content-center mb-3">
+                        <i class="bi bi-calendar-month fs-1"></i>
+                    </div>
+                    <h3 class="card-title">{{ stats.monthly_volume | currency }}</h3>
+                    <p class="card-text">This Month</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Features Section -->
+    <div class="row mt-5">
+        <div class="col-12">
+            <h2 class="h4 mb-4">Services</h2>
+        </div>
+        <div class="col-md-4 mb-4">
+            <div class="card h-100">
+                <div class="card-body text-center">
+                    <i class="bi bi-speedometer2 text-primary fs-1 mb-3"></i>
+                    <h5 class="card-title">Account Dashboard</h5>
+                    <p class="card-text">Monitor your account activity, view recent transactions, and track your balance in real-time.</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4 mb-4">
+            <div class="card h-100">
+                <div class="card-body text-center">
+                    <i class="bi bi-search text-primary fs-1 mb-3"></i>
+                    <h5 class="card-title">Transaction Search</h5>
+                    <p class="card-text">Easily find specific transactions by company name or date range with our advanced search tools.</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4 mb-4">
+            <div class="card h-100">
+                <div class="card-body text-center">
+                    <i class="bi bi-shield-check text-primary fs-1 mb-3"></i>
+                    <h5 class="card-title">Security First</h5>
+                    <p class="card-text">Your financial data is protected with state-of-the-art security measures and encryption.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

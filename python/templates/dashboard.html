@@ -1,0 +1,259 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - {{ BANK_NAME }}{% endblock %}
+
+{% block content %}
+<div class="container my-4">
+    <!-- Welcome Header -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h3>Account: {{ current_user.account_number }} | {{ current_user.first_name }} {{ current_user.last_name }}</h3>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Account Summary Cards -->
+    <div class="row mb-4">
+        <div class="col-lg-3 col-md-6 mb-3">
+            <div class="card bg-primary text-white h-100">
+                <div class="card-body">
+                    <div class="d-flex align-items-center">
+                        <div class="me-3">
+                            <i class="bi bi-wallet2 fs-1"></i>
+                        </div>
+                        <div>
+                            <h6 class="card-subtitle mb-1 text-white-50">Current Balance</h6>
+                            <h4 class="card-title mb-0">{{ current_user.balance | currency }}</h4>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-lg-3 col-md-6 mb-3">
+            <div class="card bg-success text-white h-100">
+                <div class="card-body">
+                    <div class="d-flex align-items-center">
+                        <div class="me-3">
+                            <i class="bi bi-arrow-down-circle fs-1"></i>
+                        </div>
+                        <div>
+                            <h6 class="card-subtitle mb-1 text-white-50">Total Credits</h6>
+                            <h4 class="card-title mb-0">{{ summary.total_credits | currency }}</h4>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-lg-3 col-md-6 mb-3">
+            <div class="card bg-danger text-white h-100">
+                <div class="card-body">
+                    <div class="d-flex align-items-center">
+                        <div class="me-3">
+                            <i class="bi bi-arrow-up-circle fs-1"></i>
+                        </div>
+                        <div>
+                            <h6 class="card-subtitle mb-1 text-white-50">Total Debits</h6>
+                            <h4 class="card-title mb-0">{{ summary.total_debits | currency }}</h4>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-lg-3 col-md-6 mb-3">
+            <div class="card bg-info text-white h-100">
+                <div class="card-body">
+                    <div class="d-flex align-items-center">
+                        <div class="me-3">
+                            <i class="bi bi-activity fs-1"></i>
+                        </div>
+                        <div>
+                            <h6 class="card-subtitle mb-1 text-white-50">Recent Activity</h6>
+                            <h4 class="card-title mb-0">{{ summary.recent_activity_count }}</h4>
+                            <small class="text-white-50">Last 30 days</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Quick Actions -->
+    <div class="row mb-4">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">
+                        <i class="bi bi-lightning-charge me-2"></i>Quick Actions
+                    </h5>
+                    <div class="btn-group flex-wrap" role="group">
+                        <a href="{{ url_for('search') }}" class="btn btn-outline-primary">
+                            <i class="bi bi-search me-2"></i>Search Transactions
+                        </a>
+                        <a href="{{ url_for('transaction_archive') }}" class="btn btn-outline-info">
+                            <i class="bi bi-archive me-2"></i>Transaction Archive
+                        </a>
+                        <a href="{{ url_for('profile') }}" class="btn btn-outline-secondary">
+                            <i class="bi bi-person me-2"></i>View Profile
+                        </a>
+                        <a href="{{ url_for('export_transactions') }}" class="btn btn-outline-warning">
+                            <i class="bi bi-download me-2"></i>Export Data
+                        </a>
+                        <a href="{{ url_for('import_transactions') }}" class="btn btn-outline-danger">
+                            <i class="bi bi-upload me-2"></i>Import Data
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">
+                        <i class="bi bi-robot me-2"></i>AI-Powered Banking
+                    </h5>
+                    <div class="btn-group flex-wrap" role="group">
+                        <a href="{{ url_for('ai_transaction_research') }}" class="btn btn-outline-info">
+                            <i class="bi bi-robot me-2"></i>AI Transaction Research
+                        </a>
+                        <a href="{{ url_for('ai_loan_advisor') }}" class="btn btn-outline-success">
+                            <i class="bi bi-cash-stack me-2"></i>AI Loan Advisor
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Transaction History -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">
+                        <i class="bi bi-list-ul me-2"></i>Recent Transactions
+                    </h5>
+                    <small class="text-muted">
+                        Page {{ transactions.page }} of {{ transactions.pages }}
+                    </small>
+                </div>
+                
+                <div class="card-body p-0">
+                    {% if transactions.items %}
+                    <div class="table-responsive">
+                        <table class="table table-hover mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Date</th>
+                                    <th>Company</th>
+                                    <th>Type</th>
+                                    <th class="text-end">Amount</th>
+                                    <th class="text-end">Balance</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for transaction in transactions.items %}
+                                <tr>
+                                    <td>
+                                        <div class="fw-semibold">{{ transaction.date | datetime('%b %d') }}</div>
+                                        <small class="text-muted">{{ transaction.date | datetime('%Y %H:%M') }}</small>
+                                    </td>
+                                    <td>
+                                        <div class="fw-semibold">{{ transaction.company }}</div>
+                                        {% if transaction.category %}
+                                        <small class="text-muted">{{ transaction.category }}</small>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if transaction.is_credit() %}
+                                        <span class="badge bg-success">
+                                            <i class="bi bi-arrow-down me-1"></i>Credit
+                                        </span>
+                                        {% else %}
+                                        <span class="badge bg-danger">
+                                            <i class="bi bi-arrow-up me-1"></i>Debit
+                                        </span>
+                                        {% endif %}
+                                    </td>
+                                    <td class="text-end">
+                                        <span class="{{ 'transaction-credit' if transaction.is_credit() else 'transaction-debit' }} fw-semibold">
+                                            {{ '+' if transaction.is_credit() else '-' }}{{ transaction.amount | currency }}
+                                        </span>
+                                    </td>
+                                    <td class="text-end fw-semibold">
+                                        {{ transaction.balance_after | currency }}
+                                    </td>
+                                    <td>
+                                        <a href="{{ url_for('transaction_detail', transaction_id=transaction.id) }}" 
+                                           class="btn btn-sm btn-outline-primary">
+                                            <i class="bi bi-eye me-1"></i>View
+                                        </a>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    
+                    <!-- Pagination -->
+                    {% if transactions.pages > 1 %}
+                    <div class="card-footer">
+                        <nav aria-label="Transaction pagination">
+                            <ul class="pagination pagination-sm justify-content-center mb-0">
+                                {% if transactions.has_prev %}
+                                <li class="page-item">
+                                    <a class="page-link" href="{{ url_for('dashboard', page=transactions.prev_num) }}">
+                                        <i class="bi bi-chevron-left"></i>
+                                    </a>
+                                </li>
+                                {% endif %}
+                                
+                                {% for page_num in transactions.iter_pages() %}
+                                {% if page_num %}
+                                {% if page_num != transactions.page %}
+                                <li class="page-item">
+                                    <a class="page-link" href="{{ url_for('dashboard', page=page_num) }}">{{ page_num }}</a>
+                                </li>
+                                {% else %}
+                                <li class="page-item active">
+                                    <span class="page-link">{{ page_num }}</span>
+                                </li>
+                                {% endif %}
+                                {% else %}
+                                <li class="page-item disabled">
+                                    <span class="page-link">...</span>
+                                </li>
+                                {% endif %}
+                                {% endfor %}
+                                
+                                {% if transactions.has_next %}
+                                <li class="page-item">
+                                    <a class="page-link" href="{{ url_for('dashboard', page=transactions.next_num) }}">
+                                        <i class="bi bi-chevron-right"></i>
+                                    </a>
+                                </li>
+                                {% endif %}
+                            </ul>
+                        </nav>
+                    </div>
+                    {% endif %}
+                    
+                    {% else %}
+                    <div class="text-center py-5">
+                        <i class="bi bi-inbox fs-1 text-muted mb-3"></i>
+                        <h5 class="text-muted">No transactions found</h5>
+                        <p class="text-muted">Your transaction history will appear here once you have activity.</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,188 @@
+{% extends "base.html" %}
+
+{% block title %}Export Transactions - {{ BANK_NAME }}{% endblock %}
+
+{% block content %}
+<div class="container my-4">
+    <!-- Breadcrumb -->
+    <nav aria-label="breadcrumb" class="mb-4">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="{{ url_for('dashboard') }}">Dashboard</a></li>
+            <li class="breadcrumb-item active" aria-current="page">Export Transactions</li>
+        </ol>
+    </nav>
+
+    <!-- Page Header -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h1 class="h3 mb-1">
+                        <i class="bi bi-download me-2"></i>Export Transactions
+                    </h1>
+                    <p class="text-muted mb-0">Generate and download your transaction data in CSV format</p>
+                </div>
+                <div>
+                    <a href="{{ url_for('dashboard') }}" class="btn btn-outline-secondary">
+                        <i class="bi bi-arrow-left me-2"></i>Back to Dashboard
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Export Form -->
+    <div class="row mb-4">
+        <div class="col-lg-8">
+            <div class="card">
+                <div class="card-header bg-warning text-dark">
+                    <h5 class="mb-0">
+                        <i class="bi bi-gear me-2"></i>Export Configuration
+                    </h5>
+                    <small>Advanced export options with system optimization features</small>
+                </div>
+                <div class="card-body">
+                    <form method="POST" action="{{ url_for('export_transactions') }}">
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="filename" class="form-label">Export Filename</label>
+                                <input type="text" class="form-control" id="filename" name="filename" 
+                                       placeholder="my-transactions" value="{{ request.form.filename or 'transactions' }}">
+                                <div class="form-text">Custom filename for your export (without extension)</div>
+                            </div>
+                            
+                        </div>
+                        
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="date_range" class="form-label">Date Range (Days)</label>
+                                <select class="form-select" id="date_range" name="date_range">
+                                    <option value="30" {{ 'selected' if request.form.date_range == '30' }}>Last 30 days</option>
+                                    <option value="90" {{ 'selected' if request.form.date_range == '90' }}>Last 3 months</option>
+                                    <option value="180" {{ 'selected' if request.form.date_range == '180' }}>Last 6 months</option>
+                                    <option value="365" {{ 'selected' if request.form.date_range == '365' }}>Last year</option>
+                                    <option value="all" {{ 'selected' if request.form.date_range == 'all' }}>All transactions</option>
+                                </select>
+                            </div>
+                        </div>
+                                                <div class="d-grid gap-2 d-md-flex justify-content-md-start">
+                            <button type="submit" class="btn btn-warning btn-lg">
+                                <i class="bi bi-download me-2"></i>Generate Export
+                            </button>
+                            <button type="reset" class="btn btn-outline-secondary">
+                                <i class="bi bi-x-circle me-2"></i>Reset Form
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Sidebar with Info -->
+        <div class="col-lg-4">
+            <div class="card">
+                <div class="card-header">
+                    <h6 class="mb-0">
+                        <i class="bi bi-info-circle me-2"></i>Export Information
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <p class="small">Your transaction data will be exported with the following information:</p>
+                    <ul class="list-unstyled small">
+                        <li class="mb-1"><i class="bi bi-check text-success me-1"></i> Date and time</li>
+                        <li class="mb-1"><i class="bi bi-check text-success me-1"></i> Company names</li>
+                        <li class="mb-1"><i class="bi bi-check text-success me-1"></i> Transaction amounts</li>
+                        <li class="mb-1"><i class="bi bi-check text-success me-1"></i> Transaction types</li>
+                        <li class="mb-1"><i class="bi bi-check text-success me-1"></i> Reference numbers</li>
+                        <li class="mb-1"><i class="bi bi-check text-success me-1"></i> Account balances</li>
+                    </ul>
+                </div>
+            </div>
+            
+            <div class="card mt-3">
+                <div class="card-body text-center">
+                    <i class="bi bi-shield-exclamation text-warning fs-3 mb-2"></i>
+                    <h6 class="card-title">Security Notice</h6>
+                    <p class="card-text small text-muted">
+                        Keep exported files secure and delete them after use. Never share transaction data via unsecured channels.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+<!-- Export Results -->
+{% if export_results %}
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">
+                    <i class="bi bi-terminal me-2"></i>Export Results
+                </h5>
+                {% if export_results.success %}
+                <span class="badge bg-success">Export Successful</span>
+                {% else %}
+                <span class="badge bg-danger">Export Failed</span>
+                {% endif %}
+            </div>
+            <div class="card-body">
+                <div class="row mb-3">
+                    <div class="col-sm-3">
+                        <strong>Export File:</strong>
+                    </div>
+                    <div class="col-sm-9">
+                        <code>{{ export_results.filename }}</code>
+                    </div>
+                </div>
+                
+                <div class="row mb-3">
+                    <div class="col-sm-3">
+                        <strong>Records Processed:</strong>
+                    </div>
+                    <div class="col-sm-9">
+                        {{ export_results.transaction_count }} transactions
+                    </div>
+                </div>
+                             
+                <!-- Download Button -->
+                {% if export_results.success and export_results.file_exists %}
+                <div class="row">
+                    <div class="col-12">
+                        <div class="d-grid gap-2 d-md-block">
+                            <a href="{{ url_for('download_export_file', filename=export_results.filename) }}" 
+                               class="btn btn-success btn-lg">
+                                <i class="bi bi-download me-2"></i>Download CSV File
+                            </a>
+                            <a href="{{ url_for('export_transactions') }}" class="btn btn-outline-secondary">
+                                <i class="bi bi-arrow-left me-2"></i>Generate New Export
+                            </a>
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Form validation
+document.querySelector('form').addEventListener('submit', function(e) {
+    const filename = document.getElementById('filename').value.trim();
+    
+    // Basic filename validation
+    if (!filename) {
+        e.preventDefault();
+        alert('Please provide a filename for the export.');
+        return false;
+    }
+    
+    }
+);
+</script>
+{% endblock %}

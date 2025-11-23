@@ -1,0 +1,93 @@
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:15-alpine
+    container_name: banking-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${DB_NAME:-banking}
+      POSTGRES_USER: ${DB_USER:-bankuser}
+      POSTGRES_PASSWORD: ${DB_PASS:-securepassword123}
+      POSTGRES_INITDB_ARGS: "--encoding=UTF-8"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./docker/postgres-init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    ports:
+      - "5432:5432"
+    networks:
+      - banking-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-bankuser} -d ${DB_NAME:-banking}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+
+  # Flask Banking Application
+  banking-app:
+    build: .
+    container_name: banking-app
+    restart: unless-stopped
+    environment:
+      # Database Configuration
+      DATABASE_TYPE: postgresql
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: ${DB_NAME:-banking}
+      DB_USER: ${DB_USER:-bankuser}
+      DB_PASS: ${DB_PASS:-securepassword123}
+      
+      # Flask Configuration
+      SECRET_KEY: ${SECRET_KEY:-your-super-secret-key-change-in-production}
+      FLASK_ENV: ${FLASK_ENV:-production}
+      DEBUG: ${DEBUG:-False}
+      
+      # Security Configuration
+      SESSION_COOKIE_SECURE: ${SESSION_COOKIE_SECURE:-True}
+      LOCAL_TEST: ${LOCAL_TEST:-False}
+      
+      # Application Configuration
+      BANK_NAME: ${BANK_NAME:-Kerata-Zemke}
+
+    ports:
+      - "5000:5000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - banking-network
+    volumes:
+      - ./logs:/app/logs:rw
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+# EvilCorp - Attacker simulation server
+  evilcorp-server:
+    build: ./docker/evilcorp/
+    container_name: evilcorp-server
+    restart: unless-stopped
+    ports:
+      - "5555:5555"  # Netcat listener
+      - "8888:8888"  # HTTP C&C server
+    networks:
+      - banking-network
+    volumes:
+      - evilcorp_data:/app/stolen_data
+    healthcheck:
+      test: ["CMD", "nc", "-z", "localhost", "8888"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+volumes:
+  postgres_data:
+    driver: local
+  evilcorp_data:
+    driver: local
+  
+networks:
+  banking-network:
+    driver: bridge

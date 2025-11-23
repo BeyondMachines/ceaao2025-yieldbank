@@ -1,0 +1,155 @@
+{% extends "base.html" %}
+
+{% block title %}Login - {{ BANK_NAME }}{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="row justify-content-center align-items-center" style="min-height: 60vh;">
+        <div class="col-md-6 col-lg-5 mt-5">
+            <div class="card shadow-lg">
+                <div class="card-header bg-primary text-white text-center py-4">
+                    <h1 class="h3 mb-0">{{ BANK_NAME }}</h1>
+                    <p class="mb-0 mt-2 opacity-75">Secure Account Access</p>
+                </div>
+                
+                <div class="card-body p-4">
+                    <form method="POST" action="{{ url_for('login') }}">
+                        <div class="mb-4">
+                            <label for="email" class="form-label fw-bold">Email Address</label>
+                            <div class="input-group input-group-lg">
+                                <span class="input-group-text bg-light">
+                                    <i class="bi bi-envelope text-muted"></i>
+                                </span>
+                                <input 
+                                    type="email" 
+                                    class="form-control" 
+                                    id="email" 
+                                    name="email" 
+                                    placeholder="Enter your email"
+                                    required
+                                    autocomplete="email"
+                                >
+                            </div>
+                            <div class="mt-2">
+                                <small class="text-muted">
+                                    <i class="bi bi-info-circle me-1"></i>
+                                    Standard email login for secure access
+                                </small>
+                            </div>
+                        </div>
+                        
+                        <div class="mb-4">
+                            <label for="password" class="form-label fw-bold">Password</label>
+                            <div class="input-group input-group-lg">
+                                <span class="input-group-text bg-light">
+                                    <i class="bi bi-lock text-muted"></i>
+                                </span>
+                                <input 
+                                    type="password" 
+                                    class="form-control" 
+                                    id="password" 
+                                    name="password" 
+                                    placeholder="Enter your password"
+                                    required
+                                    autocomplete="current-password"
+                                >
+                            </div>
+                        </div>
+                        
+                        <div class="d-grid gap-2">
+                            <button type="submit" class="btn btn-primary btn-lg">
+                                <i class="bi bi-box-arrow-in-right me-2"></i>
+                                Sign In
+                            </button>
+                        </div>
+                    </form>
+                </div>
+                
+                <div class="card-footer bg-light">
+                    
+                    <div class="text-center">
+                        <small class="text-muted">
+                            <i class="bi bi-info-circle me-1"></i>
+                            <p>Training Environment</p>
+                        </small>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Back to Home Link -->
+            <div class="text-center mt-3">
+                <a href="{{ url_for('index') }}" class="text-decoration-none">
+                    <i class="bi bi-arrow-left me-1"></i>
+                    Back to Home
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Additional Security Information -->
+<div class="container mt-4">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <!-- Security Tips -->
+            <div class="alert alert-info" role="alert">
+                <div class="row align-items-center">
+                    <div class="col-auto">
+                        <i class="bi bi-lightbulb fs-4"></i>
+                    </div>
+                    <div class="col">
+                        <h6 class="alert-heading mb-1">Banking Security Tips</h6>
+                        <ul class="mb-0 small">
+                            <li>Always verify the URL before entering your credentials</li>
+                            <li>Never share your login information with others</li>
+                            <li>Log out completely when finished with your session</li>
+                            <li>Report any suspicious activity immediately</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Hidden Training Note (only visible to security professionals) -->
+            <!-- 
+            SQL INJECTION VULNERABILITY ACTIVE:
+            - Email field: Direct SQL injection possible
+            - Try: ' OR '1'='1' -- with any password
+            - Authentication completely bypassed
+            - Password validation disabled
+            -->
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Focus on email field when page loads
+document.addEventListener('DOMContentLoaded', function() {
+    const emailField = document.getElementById('email');
+    if (emailField) {
+        emailField.focus();
+    }
+});
+
+// Basic form validation
+document.querySelector('form').addEventListener('submit', function(e) {
+    const email = document.getElementById('email').value;
+    const password = document.getElementById('password').value;
+    
+    if (!email || !password) {
+        e.preventDefault();
+        alert('Please fill in both email and password fields.');
+        return false;
+    }
+    
+    // Basic email validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+        e.preventDefault();
+        alert('Please enter a valid email address.');
+        return false;
+    }
+});
+</script>
+{% endblock %}

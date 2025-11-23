@@ -1,0 +1,349 @@
+{% extends "base.html" %}
+
+{% block title %}Submit Feedback - {{ BANK_NAME }}{% endblock %}
+
+{% block content %}
+<div class="container my-4">
+    <!-- Breadcrumb -->
+    <nav aria-label="breadcrumb" class="mb-4">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="{{ url_for('dashboard') }}">Dashboard</a></li>
+            <li class="breadcrumb-item"><a href="{{ url_for('feedback_list') }}">Customer Feedback</a></li>
+            <li class="breadcrumb-item active" aria-current="page">Submit Review</li>
+        </ol>
+    </nav>
+
+    <!-- Page Header -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h1 class="h3 mb-1">
+                        <i class="bi bi-star me-2"></i>Share Your Experience
+                    </h1>
+                    <p class="text-muted mb-0">Help us improve by sharing your thoughts about {{ BANK_NAME }}</p>
+                </div>
+                <div>
+                    <a href="{{ url_for('feedback_list') }}" class="btn btn-outline-secondary">
+                        <i class="bi bi-list me-2"></i>View All Reviews
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- Feedback Form -->
+        <div class="col-lg-8 mb-4">
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0">
+                        <i class="bi bi-pencil me-2"></i>Write Your Review
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <form method="POST" action="{{ url_for('submit_feedback') }}" id="feedback-form">
+                        <!-- Rating Selection -->
+                        <div class="mb-4">
+                            <label class="form-label fw-bold">
+                                <i class="bi bi-star me-1"></i>Overall Rating *
+                            </label>
+                            <div class="rating-container">
+                                <div class="star-rating" id="star-rating">
+                                    <input type="hidden" name="score" id="score" value="">
+                                    <div class="stars">
+                                        {% for i in range(1, 6) %}
+                                        <span class="star" data-rating="{{ i }}">
+                                            <i class="bi bi-star"></i>
+                                        </span>
+                                        {% endfor %}
+                                    </div>
+                                </div>
+                                <div class="rating-text mt-2">
+                                    <small class="text-muted" id="rating-description">Click on stars to rate your experience</small>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Feedback Message -->
+                        <div class="mb-4">
+                            <label for="message" class="form-label fw-bold">
+                                <i class="bi bi-chat-text me-1"></i>Your Feedback *
+                            </label>
+                            <textarea 
+                                class="form-control" 
+                                id="message" 
+                                name="message" 
+                                rows="6" 
+                                maxlength="500" 
+                                placeholder="Share your experience with our banking services. What did you like? What could we improve? (Maximum 500 characters)"
+                                required
+                            >{{ request.form.message or '' }}</textarea>
+                            <div class="form-text d-flex justify-content-between">
+                                <span>Be specific about what you liked or didn't like</span>
+                                <span id="char-count">0/500</span>
+                            </div>
+                        </div>
+
+                        <!-- Privacy Options -->
+                        <div class="mb-4">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="is_anonymous" name="is_anonymous" value="1">
+                                <label class="form-check-label" for="is_anonymous">
+                                    <i class="bi bi-eye-slash me-1"></i>Submit anonymously
+                                </label>
+                            </div>
+                            <small class="form-text text-muted">
+                                When checked, your name will not be displayed with this review
+                            </small>
+                        </div>
+
+                        <!-- Terms and Conditions -->
+                        <div class="mb-4">
+                            <div class="alert alert-info">
+                                <h6 class="alert-heading">
+                                    <i class="bi bi-info-circle me-2"></i>Review Guidelines
+                                </h6>
+                                <ul class="mb-0 small">
+                                    <li>Avoid including personal information like account numbers</li>
+                                    <li>We reserve the right to moderate reviews for inappropriate content</li>
+                                    <li>All reviews become public and may be used for marketing purposes</li>
+                                </ul>
+                            </div>
+                        </div>
+
+                        <!-- Submit Buttons -->
+                        <div class="d-grid gap-2 d-md-flex justify-content-md-start">
+                            <button type="submit" class="btn btn-primary btn-lg" id="submit-btn" disabled>
+                                <i class="bi bi-send me-2"></i>Submit Review
+                            </button>
+                            <button type="reset" class="btn btn-outline-secondary" onclick="resetForm()">
+                                <i class="bi bi-arrow-clockwise me-2"></i>Reset Form
+                            </button>
+                            <a href="{{ url_for('dashboard') }}" class="btn btn-outline-info">
+                                <i class="bi bi-arrow-left me-2"></i>Cancel
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- Sidebar -->
+        <div class="col-lg-4">
+            <!-- User Info -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h6 class="mb-0">
+                        <i class="bi bi-person me-2"></i>Your Information
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <div class="text-center mb-3">
+                        <div class="avatar-circle bg-primary text-white d-inline-flex align-items-center justify-content-center" 
+                             style="width: 60px; height: 60px; border-radius: 50%;">
+                            <i class="bi bi-person-fill fs-4"></i>
+                        </div>
+                        <h6 class="mt-2 mb-1">{{ current_user.get_full_name() }}</h6>
+                        <small class="text-muted">{{ current_user.email }}</small>
+                    </div>
+                    
+                    <div class="small">
+                        <div class="d-flex justify-content-between mb-1">
+                            <span>Account:</span>
+                            <span>{{ current_user.account_number }}</span>
+                        </div>
+                        <div class="d-flex justify-content-between mb-1">
+                            <span>Customer since:</span>
+                            <span>{{ current_user.created_at | datetime('%B %Y') }}</span>
+                        </div>
+                        <div class="d-flex justify-content-between">
+                            <span>Status:</span>
+                            <span class="badge bg-success">Active</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const stars = document.querySelectorAll('.star');
+    const scoreInput = document.getElementById('score');
+    const submitBtn = document.getElementById('submit-btn');
+    const messageTextarea = document.getElementById('message');
+    const charCount = document.getElementById('char-count');
+    const anonymousCheckbox = document.getElementById('is_anonymous');
+    
+    // Star rating functionality
+    stars.forEach((star, index) => {
+        star.addEventListener('click', function() {
+            const rating = this.getAttribute('data-rating');
+            scoreInput.value = rating;
+            updateStars(rating);
+            updateRatingDescription(rating);
+            validateForm();
+        });
+        
+        star.addEventListener('mouseenter', function() {
+            const rating = this.getAttribute('data-rating');
+            highlightStars(rating);
+        });
+    });
+    
+    document.getElementById('star-rating').addEventListener('mouseleave', function() {
+        const currentRating = scoreInput.value;
+        updateStars(currentRating);
+    });
+    
+    // Character count functionality
+    messageTextarea.addEventListener('input', function() {
+        const count = this.value.length;
+        charCount.textContent = `${count}/500`;
+        
+        if (count > 450) {
+            charCount.classList.add('text-warning');
+        } else if (count > 480) {
+            charCount.classList.remove('text-warning');
+            charCount.classList.add('text-danger');
+        } else {
+            charCount.classList.remove('text-warning', 'text-danger');
+        }
+        
+        validateForm();
+    });
+    
+    // Anonymous checkbox functionality
+    anonymousCheckbox.addEventListener('change', function() {
+    });
+    
+    function updateStars(rating) {
+        stars.forEach((star, index) => {
+            const starIcon = star.querySelector('i');
+            if (index < rating) {
+                starIcon.className = 'bi bi-star-fill';
+                star.classList.add('text-warning');
+            } else {
+                starIcon.className = 'bi bi-star';
+                star.classList.remove('text-warning');
+            }
+        });
+    }
+    
+    function highlightStars(rating) {
+        stars.forEach((star, index) => {
+            const starIcon = star.querySelector('i');
+            if (index < rating) {
+                starIcon.className = 'bi bi-star-fill';
+                star.classList.add('text-warning');
+            } else {
+                starIcon.className = 'bi bi-star';
+                star.classList.remove('text-warning');
+            }
+        });
+    }
+    
+    function updateRatingDescription(rating) {
+        const descriptions = {
+            '1': 'Very Dissatisfied - Major issues with the service',
+            '2': 'Dissatisfied - Several problems encountered',
+            '3': 'Neutral - Average experience with some issues',
+            '4': 'Satisfied - Good experience with minor issues',
+            '5': 'Very Satisfied - Excellent service!'
+        };
+        
+        document.getElementById('rating-description').textContent = descriptions[rating] || 'Click on stars to rate your experience';
+    }
+    
+    
+    function validateForm() {
+        const hasRating = scoreInput.value !== '';
+        const hasMessage = messageTextarea.value.trim() !== '';
+        
+        submitBtn.disabled = !(hasRating && hasMessage);
+    }
+    
+    // Initial validation
+    validateForm();
+});
+
+function resetForm() {
+    document.getElementById('score').value = '';
+    document.getElementById('message').value = '';
+    document.getElementById('is_anonymous').checked = false;
+    document.getElementById('char-count').textContent = '0/500';
+    document.getElementById('char-count').className = '';
+    
+    // Reset stars
+    document.querySelectorAll('.star').forEach(star => {
+        star.querySelector('i').className = 'bi bi-star';
+        star.classList.remove('text-warning');
+    });
+    
+    // Reset preview
+    document.getElementById('preview-stars').textContent = '☆☆☆☆☆';
+    document.getElementById('preview-message').textContent = 'Your feedback will appear here...';
+    document.getElementById('preview-author').textContent = '{{ current_user.get_full_name() }}';
+    document.getElementById('rating-description').textContent = 'Click on stars to rate your experience';
+    
+    // Disable submit button
+    document.getElementById('submit-btn').disabled = true;
+}
+
+// Form submission handler with additional client-side validation
+document.getElementById('feedback-form').addEventListener('submit', function(e) {
+    const score = document.getElementById('score').value;
+    const message = document.getElementById('message').value.trim();
+    
+    if (!score || !message) {
+        e.preventDefault();
+        alert('Please provide both a rating and feedback message.');
+        return false;
+    }
+    
+    if (message.length > 500) {
+        e.preventDefault();
+        alert('Feedback message must be 500 characters or less.');
+        return false;
+    }
+    
+    // Show loading state
+    const submitBtn = document.getElementById('submit-btn');
+    submitBtn.disabled = true;
+    submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Submitting...';
+});
+
+// Add CSS for star rating
+const style = document.createElement('style');
+style.textContent = `
+    .star {
+        cursor: pointer;
+        font-size: 1.5rem;
+        margin-right: 0.2rem;
+        transition: color 0.2s ease;
+    }
+    .star:hover {
+        color: #ffc107 !important;
+    }
+    .stars {
+        display: flex;
+        align-items: center;
+    }
+    .preview-message {
+        min-height: 60px;
+        border-left: 3px solid #007bff;
+        padding-left: 10px;
+        background-color: #f8f9fa;
+        border-radius: 0 4px 4px 0;
+    }
+`;
+document.head.appendChild(style);
+</script>
+{% endblock %}

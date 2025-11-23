@@ -1,0 +1,428 @@
+{% extends "base.html" %}
+
+{% block title %}Search - {{ BANK_NAME }}{% endblock %}
+
+{% block content %}
+<style>
+    .search-mode-tabs .nav-link.active {
+        background-color: #0d6efd;
+        color: white;
+    }
+    .advanced-search-panel {
+        border: 2px dashed #0d6efd;
+        border-radius: 8px;
+        background-color: #f8f9ff;
+    }
+    .vulnerability-hint {
+        background-color: #fff3cd;
+        border-left: 4px solid #ffc107;
+        padding: 8px 12px;
+        font-size: 0.875em;
+    }
+</style>
+<div class="container my-4">
+    <!-- Breadcrumb -->
+    <nav aria-label="breadcrumb" class="mb-4">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="{{ url_for('dashboard') }}">Dashboard</a></li>
+            <li class="breadcrumb-item active" aria-current="page">Search</li>
+        </ol>
+    </nav>
+
+    <!-- Page Header -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h1 class="h3 mb-1">Enhanced Transaction Search</h1>
+                    <p class="text-muted mb-0">Basic and Advanced search options for transaction analysis</p>
+                </div>
+                <div>
+                    <a href="{{ url_for('dashboard') }}" class="btn btn-outline-secondary">
+                        <i class="bi bi-arrow-left me-2"></i>Back to Dashboard
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Search Mode Tabs -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <ul class="nav nav-tabs search-mode-tabs" id="searchModeTabs" role="tablist">
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link active" id="basic-tab" data-bs-toggle="tab" 
+                            data-bs-target="#basic-search" type="button" role="tab">
+                        <i class="bi bi-search me-2"></i>Basic Search
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="advanced-tab" data-bs-toggle="tab" 
+                            data-bs-target="#advanced-search" type="button" role="tab">
+                        <i class="bi bi-gear me-2"></i>Advanced Search
+                    </button>
+                </li>
+            </ul>
+        </div>
+    </div>
+
+    <!-- Search Forms -->
+    <div class="tab-content" id="searchModeTabsContent">
+        <!-- Basic Search Tab -->
+        <div class="tab-pane fade show active" id="basic-search" role="tabpanel">
+            <div class="card">
+                <div class="card-header bg-success text-white">
+                    <h5 class="mb-0">
+                        <i class="bi bi-shield-check me-2"></i>Basic Search
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <form method="POST" action="{{ url_for('search') }}">
+                        <input type="hidden" name="search_mode" value="basic">
+                        
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="company" class="form-label">Company Name</label>
+                                <input type="text" class="form-control" id="company" name="company" 
+                                        placeholder="Enter company name..."
+                                        value="{{ request.form.company or request.args.get('company', '') }}">
+                            </div>
+                            <div class="col-md-3 mb-3">
+                                <label for="date_from" class="form-label">From Date</label>
+                                <input type="date" class="form-control" id="date_from" name="date_from"
+                                        value="{{ request.form.date_from or '' }}">
+                            </div>
+                            <div class="col-md-3 mb-3">
+                                <label for="date_to" class="form-label">To Date</label>
+                                <input type="date" class="form-control" id="date_to" name="date_to"
+                                        value="{{ request.form.date_to or '' }}">
+                            </div>
+                        </div>
+                        
+                        <button type="submit" class="btn btn-success">
+                            <i class="bi bi-search me-2"></i>Search
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- Advanced Search Tab -->
+        <div class="tab-pane fade" id="advanced-search" role="tabpanel">
+            <div class="card">
+                <div class="card-header bg-warning text-dark">
+                    <h5 class="mb-0">
+                        <i class="bi bi-lightning me-2"></i>Advanced Search
+                    </h5>
+                    <small>Uses optimized SQL queries for better performance with large datasets</small>
+                </div>
+                <div class="card-body advanced-search-panel">
+                    <form method="POST" action="{{ url_for('search') }}">
+                        <input type="hidden" name="search_mode" value="advanced">
+                        
+                    <form method="POST" action="{{ url_for('search') }}">
+                        <input type="hidden" name="search_mode" value="advanced">
+                        
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="adv_company" class="form-label">Company Name Pattern</label>
+                                <input type="text" class="form-control" id="adv_company" name="adv_company" 
+                                        placeholder="Enter company search pattern..."
+                                        value="{{ request.form.adv_company or '' }}">
+                                <div class="form-text">Supports wildcard patterns (%, _)</div>
+                            </div>
+                            
+                            <div class="col-md-3 mb-3">
+                                <label for="transaction_type" class="form-label">Transaction Type</label>
+                                <select class="form-select" id="transaction_type" name="transaction_type">
+                                    <option value="">All Types</option>
+                                    <option value="credit" {{ 'selected' if request.form.transaction_type == 'credit' }}>Credit</option>
+                                    <option value="debit" {{ 'selected' if request.form.transaction_type == 'debit' }}>Debit</option>
+                                </select>
+                            </div>
+                            
+                            <div class="col-md-3 mb-3">
+                                <label for="category" class="form-label">Category</label>
+                                <input type="text" class="form-control" id="category" name="category" 
+                                        placeholder="Transaction category..."
+                                        value="{{ request.form.category or '' }}">
+                            </div>
+                        </div>
+                        
+                        <div class="row">
+                            <div class="col-md-3 mb-3">
+                                <label for="amount_min" class="form-label">Min Amount ($)</label>
+                                <input type="text" class="form-control" id="amount_min" name="amount_min" 
+                                        placeholder="0.00"
+                                        value="{{ request.form.amount_min or '' }}">
+                                <div class="form-text">Numeric values only</div>
+                            </div>
+                            
+                            <div class="col-md-3 mb-3">
+                                <label for="amount_max" class="form-label">Max Amount ($)</label>
+                                <input type="text" class="form-control" id="amount_max" name="amount_max" 
+                                        placeholder="10000.00"
+                                        value="{{ request.form.amount_max or '' }}">
+                            </div>
+                            
+                            <div class="col-md-3 mb-3">
+                                <label for="adv_date_from" class="form-label">From Date</label>
+                                <input type="text" class="form-control" id="adv_date_from" name="adv_date_from" 
+                                        placeholder="YYYY-MM-DD"
+                                        value="{{ request.form.adv_date_from or '' }}">
+                                <div class="form-text">ISO date format</div>
+                            </div>
+                            
+                            <div class="col-md-3 mb-3">
+                                <label for="adv_date_to" class="form-label">To Date</label>
+                                <input type="text" class="form-control" id="adv_date_to" name="adv_date_to" 
+                                        placeholder="YYYY-MM-DD"
+                                        value="{{ request.form.adv_date_to or '' }}">
+                            </div>
+                        </div>
+                        
+                        <div class="row">
+                            <div class="col-md-4 mb-3">
+                                <label for="sort_by" class="form-label">Sort By</label>
+                                <select class="form-select" id="sort_by" name="sort_by">
+                                    <option value="date" {{ 'selected' if request.form.sort_by == 'date' }}>Date</option>
+                                    <option value="amount" {{ 'selected' if request.form.sort_by == 'amount' }}>Amount</option>
+                                    <option value="company" {{ 'selected' if request.form.sort_by == 'company' }}>Company</option>
+                                    <option value="balance_after" {{ 'selected' if request.form.sort_by == 'balance_after' }}>Balance After</option>
+                                </select>
+                            </div>
+                            
+                            <div class="col-md-4 mb-3">
+                                <label for="sort_order" class="form-label">Sort Order</label>
+                                <select class="form-select" id="sort_order" name="sort_order">
+                                    <option value="DESC" {{ 'selected' if request.form.sort_order == 'DESC' }}>Descending</option>
+                                    <option value="ASC" {{ 'selected' if request.form.sort_order == 'ASC' }}>Ascending</option>
+                                </select>
+                            </div>
+                            
+                            <div class="col-md-4 mb-3">
+                                <label for="limit" class="form-label">Result Limit</label>
+                                <input type="text" class="form-control" id="limit" name="limit" 
+                                        value="{{ request.form.limit or '100' }}" placeholder="Number of results...">
+                            </div>
+                        </div>
+                        
+                        <button type="submit" class="btn btn-warning">
+                            <i class="bi bi-lightning me-2"></i>Advanced Search
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Search Results -->
+    {% if search_performed %}
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">
+                        <i class="bi bi-list-ul me-2"></i>Search Results
+                        {% if search_mode == 'advanced' %}
+                        <span class="badge bg-warning text-dark ms-2">Advanced Mode</span>
+                        {% else %}
+                        <span class="badge bg-success ms-2">Safe Mode</span>
+                        {% endif %}
+                    </h5>
+                    {% if transactions %}
+                    <span class="badge bg-primary">{{ transactions|length }} result(s)</span>
+                    {% endif %}
+                </div>
+                
+                <div class="card-body p-0">
+                    {% if transactions %}
+                    <div class="table-responsive">
+                        <table class="table table-hover mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Date</th>
+                                    <th>Company</th>
+                                    <th>Description</th>
+                                    <th>Type</th>
+                                    <th class="text-end">Amount</th>
+                                    <th class="text-end">Balance</th>
+                                    <th>Reference</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for transaction in transactions %}
+                                <tr>
+                                    <td>
+                                        <div class="fw-semibold">{{ transaction.date | datetime('%b %d, %Y') }}</div>
+                                        <small class="text-muted">{{ transaction.date | datetime('%I:%M %p') }}</small>
+                                    </td>
+                                    <td>
+                                        <div class="fw-semibold">{{ transaction.company }}</div>
+                                        {% if transaction.category %}
+                                        <small class="badge bg-light text-dark">{{ transaction.category }}</small>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if transaction.description %}
+                                        {{ transaction.description[:50] }}
+                                        {% if transaction.description|length > 50 %}...{% endif %}
+                                        {% else %}
+                                        <span class="text-muted">No description</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if transaction.is_credit() %}
+                                        <span class="badge bg-success">
+                                            <i class="bi bi-arrow-down me-1"></i>Credit
+                                        </span>
+                                        {% else %}
+                                        <span class="badge bg-danger">
+                                            <i class="bi bi-arrow-up me-1"></i>Debit
+                                        </span>
+                                        {% endif %}
+                                    </td>
+                                    <td class="text-end">
+                                        <span class="{{ 'transaction-credit' if transaction.is_credit() else 'transaction-debit' }} fw-semibold">
+                                            {{ '+' if transaction.is_credit() else '-' }}{{ transaction.amount | currency }}
+                                        </span>
+                                    </td>
+                                    <td class="text-end fw-semibold">
+                                        {{ transaction.balance_after | currency }}
+                                    </td>
+                                    <td>
+                                        <small class="font-monospace">{{ transaction.reference_number[:10] }}...</small>
+                                    </td>
+                                    <td>
+                                        <a href="{{ url_for('transaction_detail', transaction_id=transaction.id) }}" 
+                                            class="btn btn-sm btn-outline-primary">
+                                            <i class="bi bi-eye me-1"></i>View
+                                        </a>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    
+                    <!-- Export Options -->
+                    <div class="card-footer">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <small class="text-muted">
+                                    Showing {{ transactions|length }} transactions
+                                    {% if search_mode == 'advanced' %}
+                                    <span class="badge bg-warning text-dark ms-1">SQL-optimized</span>
+                                    {% endif %}
+                                </small>
+                            </div>
+                            <div class="btn-group btn-group-sm">
+                                <button type="button" class="btn btn-outline-secondary" onclick="printResults()">
+                                    <i class="bi bi-printer me-1"></i>Print
+                                </button>
+                                <!-- Replace the existing Export button with this -->
+                                <a href="{{ url_for('export_transactions') }}" class="btn btn-outline-secondary btn-sm">
+                                    <i class="bi bi-download me-1"></i>Advanced Export
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    {% else %}
+                    <div class="text-center py-5">
+                        <i class="bi bi-search fs-1 text-muted mb-3"></i>
+                        <h5 class="text-muted">No transactions found</h5>
+                        <p class="text-muted">Try adjusting your search criteria or expanding the date range.</p>
+                        {% if search_mode == 'advanced' %}
+                        <div class="mt-3">
+                            <small class="text-muted">Advanced search tips:</small>
+                            <ul class="list-unstyled small text-muted mt-1">
+                                <li>• Use SQL wildcards: % for any characters, _ for single character</li>
+                                <li>• Try different sort orders and limits</li>
+                                <li>• Check your numeric formatting for amounts</li>
+                                <li>• Ensure date formats are YYYY-MM-DD</li>
+                            </ul>
+                        </div>
+                        {% endif %}
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+    {% else %}
+    <!-- No Search Performed -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-body text-center py-5">
+                    <p class="text-muted">Choose a search mode above and enter your criteria to find specific transactions.</p>
+                    
+                    <div class="row justify-content-center mt-4">
+                        <div class="col-md-10">
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <div class="card bg-light">
+                                        <div class="card-body">
+                                            <i class="bi bi-shield-check text-success fs-3"></i>
+                                            <h6 class="mt-2">Basic Search</h6>
+                                            <small class="text-muted">Safe, validated search using secure database queries</small>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <div class="card bg-light">
+                                        <div class="card-body">
+                                            <i class="bi bi-lightning text-warning fs-3"></i>
+                                            <h6 class="mt-2">Advanced Search</h6>
+                                            <small class="text-muted">High-performance mode with flexible SQL patterns</small>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Tab switching functionality
+document.addEventListener('DOMContentLoaded', function() {
+    const tabs = document.querySelectorAll('[data-bs-toggle="tab"]');
+    tabs.forEach(tab => {
+        tab.addEventListener('click', function() {
+            // Update search mode based on active tab
+            const target = this.getAttribute('data-bs-target');
+            const forms = document.querySelectorAll('form input[name="search_mode"]');
+            
+            forms.forEach(form => {
+                if (target.includes('basic')) {
+                    form.value = 'basic';
+                } else if (target.includes('advanced')) {
+                    form.value = 'advanced';
+                } else if (target.includes('custom')) {
+                    form.value = 'custom';
+                }
+            });
+        });
+    });
+});
+
+// Quick date range functions (for basic search)
+function setDateRange(days) {
+    const today = new Date();
+    const fromDate = new Date(today.getTime() - (days * 24 * 60 * 60 * 1000));
+    
+    document.getElementById('date_to').value = today.toISOString().split('T')[0];
+    document.getElementById('date_from').value = fromDate.toISOString().split('T')[0];
+}
+
+</script>
+{% endblock %}

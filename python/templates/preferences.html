@@ -1,0 +1,229 @@
+{% extends "base.html" %}
+
+{% block title %}Preferences - {{ BANK_NAME }}{% endblock %}
+
+{% block content %}
+<div class="container my-4">
+    <!-- Breadcrumb -->
+    <nav aria-label="breadcrumb" class="mb-4">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="{{ url_for('dashboard') }}">Dashboard</a></li>
+            <li class="breadcrumb-item active" aria-current="page">Preferences</li>
+        </ol>
+    </nav>
+
+    <!-- Page Header -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h1 class="h3 mb-1">
+                        <i class="bi bi-gear me-2"></i>User Preferences
+                    </h1>
+                    <p class="text-muted mb-0">Customize your banking experience with advanced configuration options</p>
+                </div>
+                <div>
+                    <a href="{{ url_for('dashboard') }}" class="btn btn-outline-secondary">
+                        <i class="bi bi-arrow-left me-2"></i>Back to Dashboard
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-lg-4">
+            <!-- Standard Preferences -->
+            <div class="card">
+                <div class="card-header bg-success text-white">
+                    <h5 class="mb-0">
+                        <i class="bi bi-sliders me-2"></i>Dashboard Settings
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <form method="POST" action="{{ url_for('preferences') }}">
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label for="dashboard_layout" class="form-label">Dashboard Layout</label>
+                                <select class="form-select" id="dashboard_layout" name="dashboard_layout">
+                                    <option value="default" {{ 'selected' if standard_prefs.get('dashboard_layout') == 'default' }}>Default</option>
+                                    <option value="compact" {{ 'selected' if standard_prefs.get('dashboard_layout') == 'compact' }}>Compact</option>
+                                    <option value="detailed" {{ 'selected' if standard_prefs.get('dashboard_layout') == 'detailed' }}>Detailed</option>
+                                </select>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="theme" class="form-label">Theme</label>
+                                <select class="form-select" id="theme" name="theme">
+                                    <option value="light" {{ 'selected' if standard_prefs.get('theme') == 'light' }}>Light</option>
+                                    <option value="dark" {{ 'selected' if standard_prefs.get('theme') == 'dark' }}>Dark</option>
+                                    <option value="auto" {{ 'selected' if standard_prefs.get('theme') == 'auto' }}>Auto</option>
+                                </select>
+                            </div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label class="form-label">Dashboard Widgets</label>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" name="widgets" value="balance" id="widget_balance" 
+                                       {{ 'checked' if 'balance' in standard_prefs.get('widgets', []) }}>
+                                <label class="form-check-label" for="widget_balance">Account Balance</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" name="widgets" value="transactions" id="widget_transactions"
+                                       {{ 'checked' if 'transactions' in standard_prefs.get('widgets', []) }}>
+                                <label class="form-check-label" for="widget_transactions">Recent Transactions</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" name="widgets" value="charts" id="widget_charts"
+                                       {{ 'checked' if 'charts' in standard_prefs.get('widgets', []) }}>
+                                <label class="form-check-label" for="widget_charts">Spending Charts</label>
+                            </div>
+                        </div>
+                        
+                        <button type="submit" class="btn btn-success">
+                            <i class="bi bi-check-circle me-2"></i>Save Standard Preferences
+                        </button>
+                    </form>
+                </div>
+            </div>
+            <!-- Current Configuration Status -->
+            <div class="card mt-4">
+                <div class="card-header">
+                    <h6 class="mb-0">
+                        <i class="bi bi-info-circle me-2"></i>Current Configuration
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <div class="mb-2">
+                        <small class="text-muted">Layout:</small>
+                        <div class="fw-semibold">{{ standard_prefs.get('dashboard_layout', 'default') }}</div>
+                    </div>
+                    <div class="mb-2">
+                        <small class="text-muted">Theme:</small>
+                        <div class="fw-semibold">{{ standard_prefs.get('theme', 'light') }}</div>
+                    </div>
+                    <div class="mb-2">
+                        <small class="text-muted">Widgets:</small>
+                        <div class="fw-semibold">{{ standard_prefs.get('widgets', [])|length }} enabled</div>
+                    </div>
+                    <div>
+                        <small class="text-muted">Advanced Config:</small>
+                        <div class="fw-semibold">
+                            {% if custom_config and custom_config != '{}' %}
+                            <span class="badge bg-warning text-dark">Active</span>
+                            {% else %}
+                            <span class="badge bg-secondary">None</span>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>    
+            <!-- Advanced Configuration Section -->
+            
+        
+        <!-- Sidebar -->
+        <div class="col-lg-8">
+            <div class="card mb-4">
+                <div class="card-header bg-warning text-dark">
+                    <h5 class="mb-0">
+                        <i class="bi bi-code-square me-2"></i>Advanced Configuration
+                    </h5>
+                    <small>JSON-based configuration with formula support for power users</small>
+                </div>
+                <div class="card-body">
+                    <div class="alert alert-info" role="alert">
+                        <h6 class="alert-heading">
+                            <i class="bi bi-info-circle me-2"></i>Configuration Features
+                        </h6>
+                        <ul class="mb-0 small">
+                            <li><strong>Formulas:</strong> Dynamic calculations for widget values</li>
+                            <li><strong>Calculations:</strong> Custom mathematical expressions</li>
+                            <li><strong>Advanced Logic:</strong> Python expressions for complex rules</li>
+                        </ul>
+                    </div>
+
+                    <form method="POST" action="{{ url_for('preferences') }}">
+                        <div class="mb-3">
+                            <label for="custom_config" class="form-label">Custom Configuration (JSON)</label>
+                            <textarea class="form-control small" id="custom_config" name="custom_config" 
+                                      rows="12"
+                                      placeholder=
+                            'Example configuration:
+{
+    "dashboard_layout": "custom",
+    "theme": "dark",
+    "formulas": {
+        "balance_multiplier": "1.0",
+        "widget_count": "len([1,2,3])",
+        "display_factor": "round(3.14159, 2)"
+    },
+    "calculations": {
+        "percentage": "75 * 0.01",
+        "total_widgets": "2 + 3"
+    }
+}'></textarea>
+                            <div class="form-text">
+                                <strong>Formulas</strong> and <strong>calculations</strong> support Python expressions for dynamic values.
+                                Use mathematical operations, functions like <code>len()</code>, <code>round()</code>, etc.
+                            </div>
+                        </div>
+                        
+                        <div class="d-grid gap-2 d-md-flex justify-content-md-start">
+                            <button type="submit" class="btn btn-warning">
+                                <i class="bi bi-gear me-2"></i>Apply Advanced Configuration
+                            </button>
+                            <button type="button" class="btn btn-outline-secondary" onclick="clearAdvancedConfig()">
+                                <i class="bi bi-x-circle me-2"></i>Clear Configuration
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function clearAdvancedConfig() {
+    document.getElementById('custom_config').value = '';
+}
+
+function exportConfig() {
+    const config = document.getElementById('custom_config').value;
+    if (config.trim()) {
+        const blob = new Blob([config], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'banking_preferences.json';
+        a.click();
+        URL.revokeObjectURL(url);
+    } else {
+        alert('No configuration to export');
+    }
+}
+
+// JSON syntax highlighting (basic)
+document.getElementById('custom_config').addEventListener('input', function() {
+    const textarea = this;
+    const value = textarea.value;
+    
+    // Basic JSON validation feedback
+    try {
+        if (value.trim()) {
+            JSON.parse(value);
+            textarea.classList.remove('is-invalid');
+            textarea.classList.add('is-valid');
+        } else {
+            textarea.classList.remove('is-valid', 'is-invalid');
+        }
+    } catch (e) {
+        textarea.classList.remove('is-valid');
+        textarea.classList.add('is-invalid');
+    }
+});
+</script>
+{% endblock %}
