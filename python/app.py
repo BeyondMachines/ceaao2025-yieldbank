@@ -28,10 +28,11 @@ def create_app(config_class=Config):
     # Cookies session security configurations
     app.config['SESSION_COOKIE_HTTPONLY'] = True  # Prevent JavaScript access to session cookie
     app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'  # Strict SameSite policy - has to be lax so Gsuite redirects work on Firefox and 
-    if os.getenv("LOCAL_TEST") == 'True':
-        app.config['SESSION_COOKIE_SECURE'] = False  # Local cookie is not over secure protocol, needed for Safari.
-    else:
-        app.config['SESSION_COOKIE_SECURE'] = True  # Local cookie is not over secure protocol, needed for Safari.
+    app.config['SESSION_COOKIE_SECURE'] = False
+    # if os.getenv("LOCAL_TEST") == 'True':
+    #     app.config['SESSION_COOKIE_SECURE'] = False  # Local cookie is not over secure protocol, needed for Safari.
+    # else:
+    #     app.config['SESSION_COOKIE_SECURE'] = True  # Local cookie is not over secure protocol, needed for Safari.
 
     db.init_app(app)
 
