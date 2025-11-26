@@ -82,6 +82,19 @@ services:
       timeout: 10s
       retries: 3
 
+  dozzle:
+    image: amir20/dozzle:latest
+    container_name: cryptoflux-dozzle
+    ports:
+      - "9999:8080"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    environment:
+    - DOZZLE_FILTER_CONTAINERS=running,exited  # Show running and exited containers
+    - DOZZLE_ENABLE_SHELL=true
+    networks:
+      - banking-network
+
 volumes:
   postgres_data:
     driver: local
