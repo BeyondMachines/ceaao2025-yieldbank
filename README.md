@@ -17,3 +17,5 @@ yieldbank_backup_restore.sh backup
 
 To restore
 yieldbank_backup_restore.sh restore backups/filename
+
+`autmation.sh` runs a loop of new transactions and backups
