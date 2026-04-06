@@ -1,0 +1,14 @@
+name: PR Bouncer Commands
+
+on:
+  issue_comment:
+    types: [created]
+
+jobs:
+  commands:
+    if: >
+      github.event.issue.pull_request &&
+      contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.comment.author_association)
+    uses: BeyondMachines/pr-bouncer/.github/workflows/pr-commands.yml@v1
+    with:
+      upload_to_s3: false

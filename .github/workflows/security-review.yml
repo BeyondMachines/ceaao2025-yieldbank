@@ -1,0 +1,16 @@
+name: PR Security Review
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+jobs:
+  security-review:
+    if: github.event.pull_request.head.repo.full_name == github.repository
+    uses: BeyondMachines/pr-bouncer/.github/workflows/security-review.yml@v1
+    with:
+      risk_threshold: 7
+      semgrep_rules: "p/security-audit,p/owasp-top-ten,p/javascript,p/typescript"
+      upload_to_s3: false
+    secrets:
+      GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
