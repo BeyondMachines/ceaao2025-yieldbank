@@ -33,7 +33,7 @@ check_docker() {
         print_color $RED "❌ Docker is not running. Please start Docker Desktop and try again."
         exit 1
     fi
-    print_color $GREEN "✅ Docker is running"
+    print_color $GREEN " Docker is running"
 }
 
 # Function to check if docker-compose is available
@@ -43,15 +43,15 @@ check_docker_compose() {
     elif docker compose version > /dev/null 2>&1; then
         DOCKER_COMPOSE="docker compose"
     else
-        print_color $RED "❌ docker-compose or 'docker compose' is not available"
+        print_color $RED " docker-compose or 'docker compose' is not available"
         exit 1
     fi
-    print_color $GREEN "✅ Using: $DOCKER_COMPOSE"
+    print_color $GREEN " Using: $DOCKER_COMPOSE"
 }
 
 # Function to create docker directory and initialization scripts
 setup_docker_files() {
-    print_color $BLUE "📁 Setting up Docker configuration files..."
+    print_color $BLUE " Setting up Docker configuration files..."
     
     # Create docker directory if it doesn't exist
     mkdir -p docker
@@ -59,65 +59,65 @@ setup_docker_files() {
     # Create logs directory for application logs
     mkdir -p logs
     
-    print_color $GREEN "✅ Docker directories created"
+    print_color $GREEN " Docker directories created"
 }
 
 
 # Function to start PostgreSQL stack
 start_platform() {
-    print_header "🐘 STARTING PLATFORM"
+    print_header " STARTING PLATFORM"
     
     # Copy the postgres environment file
     if [ -f ".env.postgres" ]; then
         cp .env.postgres .env
-        print_color $GREEN "✅ Using PostgreSQL environment configuration"
+        print_color $GREEN "Using PostgreSQL environment configuration"
     else
-        print_color $YELLOW "⚠️  .env.postgres not found, using default values"
+        print_color $YELLOW "  .env.postgres not found, using default values"
     fi
     
     # Start the services
-    print_color $BLUE "🚀 Starting PostgreSQL and Banking Application..."
+    print_color $BLUE "Starting PostgreSQL and Banking Application..."
     $DOCKER_COMPOSE -f docker-compose.yml up -d
     
     # Wait for services to be healthy
-    print_color $BLUE "⏳ Waiting for services to start..."
+    print_color $BLUE "Waiting for services to start..."
     sleep 10
     
     # Show service status
     $DOCKER_COMPOSE -f docker-compose.yml ps
     
     # Initialize database and populate with sample data
-    print_color $BLUE "📊 Running database migrations..."
+    print_color $BLUE "Running database migrations..."
     sleep 5  # Give the app a moment to fully start
     docker exec banking-app flask db upgrade
 
     # Initialize database and populate with sample data
-    print_color $BLUE "📊 Populating database with sample data..."
+    print_color $BLUE "Populating database with sample data..."
     sleep 5  # Give the app a moment to fully start
     docker exec banking-app python python/populate_db.py
     
-    print_header "🎉 POSTGRESQL SETUP COMPLETE"
+    print_header "POSTGRESQL SETUP COMPLETE"
     print_color $GREEN "Banking Application: http://localhost:5000"
 }
 
 # Function to stop all services
 stop_services() {
-    print_header "🛑 STOPPING ALL SERVICES"
+    print_header "STOPPING ALL SERVICES"
     
     # Stop both possible stacks
     if [ -f "docker-compose.yml" ]; then
         print_color $BLUE "Stopping platform..."
         $DOCKER_COMPOSE -f docker-compose.yml down
     fi
-    print_color $GREEN "✅ All services stopped"
+    print_color $GREEN "All services stopped"
 }
 
 # Function to clean up (remove containers and volumes)
 cleanup() {
-    print_header "🧹 CLEANING UP"
-    print_color $YELLOW "⚠️  This will remove all containers, data volumes, and banking-app images!"
-    print_color $YELLOW "⚠️  The application will need to rebuild images on next startup."
-    read -p "Are you sure? (y/N): " -n 1 -r
+    print_header "CLEANING UP"
+    print_color $YELLOW "This will remove all containers, data volumes, and banking-app images!"
+    print_color $YELLOW "The application will need to rebuild images on next startup."
+    read -p "Are you sure? (Y/N): " -n 1 -r
     echo
     
     if [[ $REPLY =~ ^[Yy]$ ]]; then
@@ -141,7 +141,7 @@ cleanup() {
         docker container prune -f
         docker volume prune -f
         
-        print_color $GREEN "✅ Cleanup complete - images will be rebuilt on next startup"
+        print_color $GREEN "Cleanup complete - images will be rebuilt on next startup"
     else
         print_color $BLUE "Cleanup cancelled"
     fi
@@ -155,7 +155,7 @@ show_logs() {
         if [ -f ".env" ] && grep -q "postgresql" .env; then
             $DOCKER_COMPOSE -f docker-compose.yml logs -f
         else
-            print_color $RED "❌ No active configuration found"
+            print_color $RED "No active configuration found"
         fi
     else
         print_color $YELLOW "Showing logs for $service..."
@@ -165,7 +165,7 @@ show_logs() {
 
 # Function to show status
 show_status() {
-    print_header "📊 DOCKER SERVICES STATUS"
+    print_header "DOCKER SERVICES STATUS"
     
     # Check which configuration is active
     if [ -f ".env" ]; then
@@ -185,38 +185,38 @@ show_status() {
 
 # Main menu function
 show_menu() {
-    print_header "🏦 BANKING SECURITY TRAINING - DOCKER SETUP"
+    print_header " BANKING SECURITY TRAINING - DOCKER SETUP"
     echo "Choose your setup option:"
     echo
-    echo "1) 🐘 Start full platform"
-    echo "2) 📊 Show status"
-    echo "3) 📝 Show logs"
-    echo "4) 🛑 Stop all services"
-    echo "5) 🧹 Cleanup (remove all data)"
-    echo "6) ❓ Help"
-    echo "7) 🚪 Exit"
+    echo "1) Start full platform"
+    echo "2) Show status"
+    echo "3) Show logs"
+    echo "4) Stop all services"
+    echo "5) Cleanup (remove all data)"
+    echo "6) Help"
+    echo "7) Exit"
     echo
 }
 
 # Help function
 show_help() {
-    print_header "❓ HELP & TROUBLESHOOTING"
-    echo "🐘 PostgreSQL Option:"
+    print_header "HELP & TROUBLESHOOTING"
+    echo "PostgreSQL Option:"
     echo "   - Uses PostgreSQL 15 Alpine image"
     echo "   - Lighter weight, faster startup"
     echo "   - Good for development and testing"
     echo
-    echo "📁 Important Files:"
+    echo "Important Files:"
     echo "   - .env.postgres: PostgreSQL configuration"
     echo "   - docker/: Database initialization scripts"
     echo
-    echo "🔧 Troubleshooting:"
+    echo "Troubleshooting:"
     echo "   - Check Docker is running: docker info"
     echo "   - View logs: ./setup.sh and choose option 3"
     echo "   - Reset everything: ./setup.sh and choose option 5"
     echo "   - Ports in use: 5000 (app), 5432 (db)"
     echo
-    echo "🌐 Access Points:"
+    echo "Access Points:"
     echo "   - Banking App: http://localhost:5000"
     echo "   - Database Admin: http://localhost:8080"
     echo
@@ -256,11 +256,11 @@ main() {
                 show_help
                 ;;
             7)
-                print_color $GREEN "👋 Goodbye!"
+                print_color $GREEN "Goodbye!"
                 exit 0
                 ;;
             *)
-                print_color $RED "❌ Invalid option. Please choose 1-7."
+                print_color $RED "Invalid option. Please choose 1-7."
                 ;;
         esac
         
