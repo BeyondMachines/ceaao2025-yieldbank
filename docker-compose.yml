@@ -84,7 +84,7 @@ services:
 
   dozzle:
     image: amir20/dozzle:latest
-    container_name: cryptoflux-dozzle
+    container_name: banking-dozzle
     ports:
       - "9999:8080"
     volumes:
