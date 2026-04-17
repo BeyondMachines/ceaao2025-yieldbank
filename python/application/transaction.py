@@ -26,13 +26,11 @@ def transaction_detail(transaction_id):
     Shows all transaction information and related data
     Handles note updates with VULNERABLE template injection
     """
-    # Get transaction and verify it belongs to current user
-    # transaction = Transaction.query.filter_by(
-    #     id=transaction_id,
-    #     user_id=current_user.id
-    # ).first()
-     # VULNERABLE IDOR: No user ownership check
-    transaction = Transaction.query.get(transaction_id)
+    # SECURE: Explicitly verify the current_user owns this transaction
+    transaction = Transaction.query.filter_by(
+        id=transaction_id, 
+        user_id=current_user.id
+    ).first()
 
     if not transaction:
         flash('Transaction not found or you do not have permission to view it.', 'error')
