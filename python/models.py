@@ -4,8 +4,8 @@ Defines User and Transaction models with relationships
 """
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import UserMixin
-# from werkzeug.security import generate_password_hash, check_password_hash
 import hashlib
+from werkzeug.security import generate_password_hash, check_password_hash
 from sqlalchemy import text
 from datetime import datetime
 from decimal import Decimal
@@ -42,61 +42,28 @@ class User(UserMixin, db.Model):
     @staticmethod
     def authenticate(email, password):
         """
-        VULNERABLE: Authentication method with SQL injection vulnerabilities
-        This method demonstrates dangerous raw SQL usage for training purposes
-        DO NOT USE IN PRODUCTION
+        Secure authentication helper.
         """
         try:
-
-            password_hash = hashlib.md5(password.encode()).hexdigest()
-
-            # VULNERABILITY: Direct string interpolation allows SQL injection
-            vulnerable_query = f"""
-                SELECT id, email, password_hash, first_name, last_name, 
-                       account_number, balance, created_at, is_active 
-                FROM users 
-                WHERE password_hash = '{password_hash}'
-                    AND email = '{email}'
-                LIMIT 1
-            """
-
-            result = db.session.execute(text(vulnerable_query)).fetchone()
-
-            if result:
-                # Create a User object from the raw result
-                user = User()
-                user.id = result[0]
-                user.email = result[1] 
-                user.password_hash = result[2]
-                user.first_name = result[3]
-                user.last_name = result[4]
-                user.account_number = result[5]
-                user.balance = result[6]
-                user.created_at = result[7]
-                user.is_active = result[8]
-
+            user = User.query.filter_by(email=email).first()
+            if user and user.check_password(password):
                 return user
-
             return None
 
         except Exception as e:
-            # VULNERABILITY: Expose SQL errors to help with training
-            raise Exception(f"Database error (SQL injection point): {str(e)}")
+            raise Exception(f"Authentication error: {str(e)}")
 
     def set_password(self, password):
-        """Hash and store password using simple MD5 (VULNERABLE for training)"""
-        # SECURE VERSION
-        # self.password_hash = generate_password_hash(password)
-
-        # VULNERABLE VERSION (for training purposes):
-        self.password_hash = hashlib.md5(password.encode()).hexdigest()
+        """Hash and store password using Werkzeug PBKDF2."""
+        self.password_hash = generate_password_hash(password, method='pbkdf2:sha256')
 
     def check_password(self, password):
-        """Verify password against stored hash using simple MD5 (VULNERABLE for training)"""
-        # SECURE VERSION
-        # return check_password_hash(self.password_hash, password)
+        """Verify password against stored hash with legacy MD5 fallback."""
+        # Primary secure verification path.
+        if self.password_hash and self.password_hash.startswith('pbkdf2:'):
+            return check_password_hash(self.password_hash, password)
 
-        # VULNERABLE VERSION (for training purposes):
+        # Backward compatibility for legacy training data stored as raw MD5.
         return self.password_hash == hashlib.md5(password.encode()).hexdigest()
 
     def get_full_name(self):

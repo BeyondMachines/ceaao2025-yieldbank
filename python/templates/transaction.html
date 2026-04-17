@@ -144,8 +144,7 @@
                         <div class="col-sm-8">
                             {% if rendered_note %}
                             <div class="mb-2">
-                                <!-- VULNERABLE: Rendered template content (allows template injection) -->
-                                {{ rendered_note | safe }}
+                                {{ rendered_note }}
                             </div>
                             {% elif transaction.note %}
                             <div class="mb-2">

@@ -2,7 +2,7 @@
 Main Flask application for Banking Security Training
 Initializes the Flask app with all necessary components
 """
-from flask import Flask
+from flask import Flask, request
 from flask_login import LoginManager
 from flask_migrate import Migrate
 from config import Config
@@ -25,14 +25,16 @@ def create_app(config_class=Config):
     app = Flask(__name__)
     app.config.from_object(config_class)
 
-    # Cookies session security configurations
-    app.config['SESSION_COOKIE_HTTPONLY'] = True  # Prevent JavaScript access to session cookie
-    app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'  # Strict SameSite policy - has to be lax so Gsuite redirects work on Firefox and 
-    app.config['SESSION_COOKIE_SECURE'] = False
-    # if os.getenv("LOCAL_TEST") == 'True':
-    #     app.config['SESSION_COOKIE_SECURE'] = False  # Local cookie is not over secure protocol, needed for Safari.
-    # else:
-    #     app.config['SESSION_COOKIE_SECURE'] = True  # Local cookie is not over secure protocol, needed for Safari.
+    # Cookie/session hardening.
+    app.config['SESSION_COOKIE_HTTPONLY'] = True
+    app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
+    local_test = os.getenv("LOCAL_TEST", "").lower() in {"1", "true", "yes"}
+    secure_cookie_env = os.getenv("SESSION_COOKIE_SECURE")
+    if secure_cookie_env is not None:
+        app.config['SESSION_COOKIE_SECURE'] = secure_cookie_env.lower() in {"1", "true", "yes"}
+    else:
+        # Secure by default; explicit LOCAL_TEST allows local http labs to function.
+        app.config['SESSION_COOKIE_SECURE'] = not local_test
 
     db.init_app(app)
 
@@ -73,6 +75,17 @@ def create_app(config_class=Config):
         return dict(
             BANK_NAME=app.config['BANK_NAME']
         )
+
+    @app.after_request
+    def set_security_headers(response):
+        """Set baseline security headers for all responses."""
+        response.headers.setdefault('X-Frame-Options', 'DENY')
+        response.headers.setdefault('X-Content-Type-Options', 'nosniff')
+        response.headers.setdefault('Referrer-Policy', 'strict-origin-when-cross-origin')
+        response.headers.setdefault('Content-Security-Policy', "default-src 'self'; object-src 'none'; frame-ancestors 'none'; base-uri 'self'")
+        if request.is_secure:
+            response.headers.setdefault('Strict-Transport-Security', 'max-age=31536000; includeSubDomains')
+        return response
 
     # First register the error handlers for nice error messages
     register_error_handlers(app)

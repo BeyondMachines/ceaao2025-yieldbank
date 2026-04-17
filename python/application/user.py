@@ -8,8 +8,6 @@ from datetime import datetime, timedelta, timezone
 from sqlalchemy import text
 from models import db, User, Transaction
 from decorators import login_required, anonymous_required, active_user_required
-import pickle
-import base64
 import json
 
 
@@ -18,7 +16,7 @@ def login():
     """
     User login page and authentication handler
     GET: Show login form
-    POST: Process login attempt using vulnerable authentication by default
+    POST: Process login attempt using secure authentication
     """
     if request.method == 'POST':
         email = request.form.get('email', '').strip()
@@ -30,9 +28,8 @@ def login():
             flash('Please provide both email and password.', 'error')
             return render_template('login.html')
 
-        # Use vulnerable authentication by default
-        # The secure method _standard_login_check() exists but is not used
-        user = _vulnerable_login_check(email, password)
+        # Use secure authentication path
+        user = _standard_login_check(email, password)
 
         if user:
             if not user.is_active:
@@ -53,45 +50,58 @@ def login():
 
 def _standard_login_check(email, password):
     """
-    SECURE: Standard login method using SQLAlchemy ORM
-    This is the SAFE implementation that should be used in production
-    Protected against SQL injection attacks
-    NOTE: This function exists but is NOT currently used by the login() function
+    Secure login method using SQLAlchemy ORM.
+    Protected against SQL injection attacks.
+    Also migrates legacy MD5 password hashes to PBKDF2 on successful login.
     """
     user = User.query.filter_by(email=email).first()
     
     if user and user.check_password(password):
+        # Transparent upgrade for legacy MD5 hashes.
+        if user.password_hash and not user.password_hash.startswith('pbkdf2:'):
+            user.set_password(password)
+            db.session.commit()
         return user
     return None
 
 
-def _vulnerable_login_check(email, password):
+def _validate_preferences_config(config_data):
     """
-    EXTREMELY VULNERABLE: Default login method using User class vulnerable method
-    THIS IS THE ACTIVE AUTHENTICATION METHOD - Contains severe SQL injection vulnerabilities
-    
-    Critical SQL Injection Test Cases:
-    - Email: ' OR '1'='1' --    (Login as first user, any password)
-    - Email: ' OR 1=1 --        (Login as first user, any password)  
-    - Email: admin' --          (Login as admin if exists, any password)
-    - Email: ' OR '1'='1        (Login without password, no comment needed)
-    - Password: anything        (Password is completely ignored in vulnerable method)
+    Validate advanced preferences payload as data only.
+    No executable expressions are allowed.
     """
-    try:
-        # Use the vulnerable authentication method from User class
-        # This method contains SQL injection vulnerabilities and bypasses password validation
-        user = User.authenticate(email, password)
+    if not isinstance(config_data, dict):
+        raise ValueError("Configuration must be a JSON object.")
 
-        if user:
-            flash(f'Login successful for user: {user.email}', 'success')
-            return user
-        
-        return None
-        
-    except Exception as e:
-        # Show SQL errors for training purposes
-        flash(f'Database error: {str(e)}', 'error')
-        return None
+    allowed_keys = {"dashboard_layout", "theme", "widgets", "limits", "notifications"}
+    unknown = set(config_data.keys()) - allowed_keys
+    if unknown:
+        raise ValueError(f"Unsupported keys: {', '.join(sorted(unknown))}")
+
+    if "dashboard_layout" in config_data and config_data["dashboard_layout"] not in {"default", "compact", "detailed", "custom"}:
+        raise ValueError("Invalid dashboard_layout value.")
+
+    if "theme" in config_data and config_data["theme"] not in {"light", "dark", "auto"}:
+        raise ValueError("Invalid theme value.")
+
+    if "widgets" in config_data:
+        widgets = config_data["widgets"]
+        if not isinstance(widgets, list):
+            raise ValueError("widgets must be a list.")
+        allowed_widgets = {"balance", "transactions", "charts"}
+        if any(w not in allowed_widgets for w in widgets):
+            raise ValueError("widgets contains unsupported values.")
+
+    if "limits" in config_data:
+        limits = config_data["limits"]
+        if not isinstance(limits, dict):
+            raise ValueError("limits must be an object.")
+        for k, v in limits.items():
+            if not isinstance(v, (int, float)):
+                raise ValueError(f"limits.{k} must be numeric.")
+
+    if "notifications" in config_data and not isinstance(config_data["notifications"], dict):
+        raise ValueError("notifications must be an object.")
 
 
 @login_required
@@ -195,8 +205,8 @@ def profile():
 @active_user_required
 def preferences():
     """
-    User preferences page with formula-based customization
-    VULNERABLE: eval() on user-provided formulas in JSON preferences
+    User preferences page with JSON-based customization.
+    Stores validated data only.
     """
     if request.method == 'POST':
         # Get preference data from form
@@ -204,42 +214,21 @@ def preferences():
         theme = request.form.get('theme', 'light')
         widgets = request.form.getlist('widgets')
         
-        # VULNERABILITY: Allow users to submit custom formulas/expressions
         custom_config = request.form.get('custom_config', '')
         
         if custom_config:
             try:
-                # VULNERABLE: JSON with formula evaluation
-                print(f"DEBUG: Processing custom configuration: {custom_config[:100]}...")
-                
-                # Parse JSON configuration
                 config_data = json.loads(custom_config)
-                
-                # Process any "formula" fields - VULNERABLE to code injection
-                if 'formulas' in config_data:
-                    for key, formula in config_data['formulas'].items():
-                        try:
-                            # VULNERABLE: Direct eval() of user input
-                            result = eval(formula)
-                            config_data[f'{key}_result'] = result
-                            print(f"DEBUG: Evaluated formula {key}: {formula} = {result}")
-                        except Exception as e:
-                            print(f"Formula error in {key}: {e}")
-                
-                # Process "calculations" for dashboard widgets
-                if 'calculations' in config_data:
-                    for calc_name, expression in config_data['calculations'].items():
-                        # VULNERABLE: Another eval() point
-                        calculated_value = eval(expression)
-                        config_data[f'calc_{calc_name}'] = calculated_value
-                
-                # Store the processed configuration
+                _validate_preferences_config(config_data)
+
+                # Store validated data only
                 session['custom_config'] = config_data
-                
-                flash(f'Custom configuration applied: {len(config_data)} settings processed', 'success')
-                
+
+                flash('Custom configuration applied successfully.', 'success')
             except json.JSONDecodeError:
                 flash('Invalid JSON format in custom configuration.', 'error')
+            except ValueError as e:
+                flash(f'Invalid configuration: {str(e)}', 'error')
             except Exception as e:
                 flash(f'Error processing configuration: {str(e)}', 'error')
         else:
@@ -254,20 +243,10 @@ def preferences():
         
         return redirect(url_for('preferences'))
     
-    # Load current preferences and evaluate any formulas
+    # Load current preferences
     custom_config = session.get('custom_config', {})
     standard_prefs = session.get('standard_preferences', {})
-    
-    # VULNERABILITY: Re-evaluate formulas on page load
-    if custom_config and 'formulas' in custom_config:
-        for key, formula in custom_config['formulas'].items():
-            try:
-                # VULNERABLE: eval() during page rendering
-                result = eval(formula)
-                custom_config[f'{key}_current'] = result
-            except:
-                pass
-    
+
     return render_template('preferences.html', 
                          custom_config=json.dumps(custom_config, indent=2),
                          standard_prefs=standard_prefs)

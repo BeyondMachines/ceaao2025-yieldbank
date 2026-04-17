@@ -2,12 +2,10 @@
 Feedback routes for the Banking Application
 Handles customer feedback functionality with intentional XSS vulnerabilities for training
 """
-from flask import render_template, request, redirect, url_for, flash
+from flask import render_template, request, redirect, url_for, flash, abort
 from flask_login import current_user
 from models import db, Feedback, User
 from decorators import active_user_required
-import html
-import re
 
 
 def feedback_list():
@@ -114,6 +112,9 @@ def feedback_by_user(user_id):
     VULNERABLE: Displays all user feedback without proper authorization
     this is an IDOR, just for fun.
     """
+    if current_user.role != 'admin' and current_user.id != user_id:
+        abort(403)
+
     user = User.query.get_or_404(user_id)
     
     # Get all feedback from this user (including non-anonymous)
@@ -124,4 +125,3 @@ def feedback_by_user(user_id):
     return render_template('feedback_by_user.html',
                          user=user,
                          feedback_entries=feedback_entries)
-

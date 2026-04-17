@@ -12,8 +12,7 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./docker/postgres-init.sql:/docker-entrypoint-initdb.d/init.sql:ro
-    ports:
-      - "5432:5432"
+    # Keep PostgreSQL internal-only; reachable via service DNS from app containers.
     networks:
       - banking-network
     healthcheck:
@@ -86,12 +85,12 @@ services:
     image: amir20/dozzle:latest
     container_name: cryptoflux-dozzle
     ports:
-      - "9999:8080"
+      - "127.0.0.1:9999:8080"
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
     environment:
     - DOZZLE_FILTER_CONTAINERS=running,exited  # Show running and exited containers
-    - DOZZLE_ENABLE_SHELL=true
+    - DOZZLE_ENABLE_SHELL=false
     networks:
       - banking-network
 
