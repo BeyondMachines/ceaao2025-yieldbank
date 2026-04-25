@@ -43,6 +43,7 @@
                 </div>
                 <div class="card-body">
                     <form method="POST" action="{{ url_for('submit_feedback') }}" id="feedback-form">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                         <!-- Rating Selection -->
                         <div class="mb-4">
                             <label class="form-label fw-bold">

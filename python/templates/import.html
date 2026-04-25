@@ -45,6 +45,7 @@
                 </div>
                 <div class="card-body">
                     <form method="POST" enctype="multipart/form-data" action="{{ url_for('import_transactions') }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                         <div class="mb-4">
                             <label for="import_file" class="form-label">Select Import File</label>
                             <input type="file" class="form-control" id="import_file" name="import_file" required

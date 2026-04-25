@@ -5,13 +5,10 @@ from datetime import datetime, timedelta
 from sqlalchemy import or_, and_, text
 from models import db, User, Transaction
 from decorators import login_required, anonymous_required, active_user_required
-import subprocess
 import csv
-import pickle
 import os
 import json
 import yaml
-from jinja2 import Template
 from decimal import Decimal, InvalidOperation
 import logging
 import re
@@ -24,15 +21,13 @@ def transaction_detail(transaction_id):
     """
     Detailed view of a specific transaction with note editing capability
     Shows all transaction information and related data
-    Handles note updates with VULNERABLE template injection
+    Handles note updates securely
     """
-    # Get transaction and verify it belongs to current user
-    # transaction = Transaction.query.filter_by(
-    #     id=transaction_id,
-    #     user_id=current_user.id
-    # ).first()
-     # VULNERABLE IDOR: No user ownership check
-    transaction = Transaction.query.get(transaction_id)
+    # Enforce ownership check
+    transaction = Transaction.query.filter_by(
+        id=transaction_id,
+        user_id=current_user.id
+    ).first()
 
     if not transaction:
         flash('Transaction not found or you do not have permission to view it.', 'error')
@@ -64,30 +59,10 @@ def transaction_detail(transaction_id):
         )
     ).order_by(Transaction.date.desc()).limit(5).all()
     
-    # VULNERABLE: Process note through Jinja2 template rendering
-
-    # IN-UNIVERSE: Since the note can have limited html functionality, we will render it separately, so that we can have control of any errors,
-    # and also show the raw note if rendering fails.
-    # This also allows protection against XSS by controlling the rendering context.
+    # Render note as plain text only (never as template code)
     rendered_note = None
     if transaction.note:
-        try:
-            # VULNERABILITY: Direct template rendering of user input
-            # This allows template injection attacks
-
-            template = Template(transaction.note)
-            rendered_note = template.render(
-                current_user=current_user,
-                transaction=transaction,
-                config=current_app.config,
-                request=request
-            )
-            # END VULNERABILITY 
-
-        except Exception as e:
-            # If template rendering fails, show the raw note
-            rendered_note = transaction.note
-            flash(f'Note rendering error: {str(e)}', 'warning')
+        rendered_note = transaction.note
     
     return render_template('transaction.html', 
                             transaction=transaction, 
@@ -169,10 +144,8 @@ def _basic_search():
 
 def _advanced_search():
     """
-    VULNERABLE: Advanced search using raw SQL for "better performance and flexibility"
-    Contains multiple SQL injection vulnerabilities for training purposes
+    Safe advanced search using ORM with validated user inputs.
     """
-    # Get advanced search parameters
     company = request.form.get('adv_company', '').strip()
     amount_min = request.form.get('amount_min', '').strip()
     amount_max = request.form.get('amount_max', '').strip()
@@ -180,78 +153,54 @@ def _advanced_search():
     category = request.form.get('category', '').strip()
     date_from = request.form.get('adv_date_from', '').strip()
     date_to = request.form.get('adv_date_to', '').strip()
-    sort_by = request.form.get('sort_by', 'date').strip()
-    sort_order = request.form.get('sort_order', 'DESC').strip()
-    
-    # VULNERABILITY 1: Dynamic WHERE clause building with string concatenation
-    base_query = f"""
-        SELECT t.*, u.first_name, u.last_name 
-        FROM transactions t 
-        JOIN users u ON t.user_id = u.id 
-        WHERE t.user_id = {current_user.id}
-    """
-    
-    where_conditions = []
-    
-    # VULNERABILITY 2: Unsafe company name filtering
-    if company:
-        # This allows SQL injection via company name parameter
-        where_conditions.append(f"t.company LIKE '%{company}%'")
-    
-    # VULNERABILITY 3: Unsafe amount range filtering
-    if amount_min:
-        # Direct injection of user input into SQL
-        where_conditions.append(f"t.amount >= {amount_min}")
-    
-    if amount_max:
-        # Another injection point
-        where_conditions.append(f"t.amount <= {amount_max}")
-    
-    # VULNERABILITY 4: Unsafe transaction type filtering
-    if transaction_type and transaction_type.lower() != 'all':
-        # Using user input directly in SQL
-        where_conditions.append(f"t.transaction_type = '{transaction_type}'")
-    
-    # VULNERABILITY 5: Category filtering injection
-    if category:
-        # Another string concatenation vulnerability
-        where_conditions.append(f"t.category LIKE '%{category}%'")
-    
-    # VULNERABILITY 6: Date filtering vulnerabilities
-    if date_from:
-        # Date injection - users could inject SQL instead of dates
-        where_conditions.append(f"t.date >= '{date_from}'")
-    
-    if date_to:
-        # Another date injection point
-        where_conditions.append(f"t.date <= '{date_to} 23:59:59'")
-    
-    # Build the complete WHERE clause
-    if where_conditions:
-        base_query += " AND " + " AND ".join(where_conditions)
-    
-    # VULNERABILITY 7: Unsafe ORDER BY clause
-    # This allows injection via sort parameters
-    base_query += f" ORDER BY t.{sort_by} {sort_order}"
-    
-    # VULNERABILITY 8: Unsafe LIMIT clause (bonus injection point)
-    limit = request.form.get('limit', '100').strip()
-    base_query += f" LIMIT {limit}"
-    
-    # Add some logging for "debugging" purposes (reveals the vulnerable query)
-    print(f"DEBUG: Executing advanced search query: {base_query}")
-    
+    sort_by = request.form.get('sort_by', 'date').strip().lower()
+    sort_order = request.form.get('sort_order', 'DESC').strip().upper()
+    limit_raw = request.form.get('limit', '100').strip()
+
     try:
-        # Execute the vulnerable raw SQL query
-        result = db.session.execute(text(base_query))
-        
-        # Convert results back to Transaction objects
-        transactions = []
-        for row in result:
-            # Assuming your SELECT returns transaction columns in order
-            transaction = db.session.get(Transaction, row.id)  # Add model class
-            if transaction:
-                transactions.append(transaction)
+        query = Transaction.query.filter(Transaction.user_id == current_user.id)
+
+        if company:
+            query = query.filter(Transaction.company.ilike(f"%{company}%"))
+
+        if amount_min:
+            query = query.filter(Transaction.amount >= Decimal(amount_min))
+        if amount_max:
+            query = query.filter(Transaction.amount <= Decimal(amount_max))
+
+        if transaction_type and transaction_type.lower() != 'all':
+            query = query.filter(Transaction.transaction_type == transaction_type.lower())
+
+        if category:
+            query = query.filter(Transaction.category.ilike(f"%{category}%"))
+
+        if date_from:
+            start_date = datetime.strptime(date_from, '%Y-%m-%d')
+            query = query.filter(Transaction.date >= start_date)
+        if date_to:
+            end_date = datetime.strptime(date_to, '%Y-%m-%d') + timedelta(days=1)
+            query = query.filter(Transaction.date < end_date)
+
+        allowed_sort = {
+            'date': Transaction.date,
+            'amount': Transaction.amount,
+            'company': Transaction.company,
+            'type': Transaction.transaction_type,
+        }
+        if sort_by not in allowed_sort:
+            sort_by = 'date'
+        sort_col = allowed_sort[sort_by]
+        if sort_order == 'ASC':
+            query = query.order_by(sort_col.asc())
+        else:
+            query = query.order_by(sort_col.desc())
+
+        try:
+            limit = int(limit_raw)
+        except ValueError:
+            limit = 100
+        limit = max(1, min(limit, 500))
+        transactions = query.limit(limit).all()
 
         if not transactions:
             flash('No transactions found matching your advanced search criteria.', 'info')
@@ -260,48 +209,62 @@ def _advanced_search():
         
         return transactions
         
+    except (InvalidOperation, ValueError):
+        flash('Invalid advanced search input.', 'error')
+        return []
     except Exception as e:
-        # VULNERABILITY 9: Error message that reveals database structure
-        error_msg = str(e)
-        flash(f'Advanced search failed: {error_msg}', 'error')
+        flash('Advanced search failed. Please verify inputs.', 'error')
         print(f"Advanced search error: {e}")
         return []
     
 
 def transaction_analytics():
     """
-    VULNERABLE: New analytics feature with multiple SQL injection points
-    Could be added as a new route for "power users"
+    Safe analytics helper with validated grouping and time window.
     """
-    # Get analytics parameters
     metric = request.args.get('metric', 'monthly_spending').strip()
-    group_by = request.args.get('group_by', 'company').strip()
+    group_by = request.args.get('group_by', 'company').strip().lower()
     time_period = request.args.get('time_period', '6').strip()  # months
-    
-    # VULNERABILITY 11: Dynamic analytics query building
-    analytics_query = f"""
-        SELECT 
-            {group_by},
-            COUNT(*) as transaction_count,
-            SUM(amount) as total_amount,
-            AVG(amount) as avg_amount
-        FROM transactions 
-        WHERE user_id = {current_user.id}
-        AND date >= DATE('now', '-{time_period} months')
-        GROUP BY {group_by}
-        ORDER BY total_amount DESC
-    """
-    
-    # VULNERABILITY 12: Optional custom WHERE clause
-    custom_filter = request.args.get('custom_filter', '').strip()
-    if custom_filter:
-        analytics_query += f" HAVING {custom_filter}"
-    
+
     try:
-        result = db.session.execute(text(analytics_query))
-        return [dict(row) for row in result]
+        months = int(time_period)
+    except ValueError:
+        months = 6
+    months = max(1, min(months, 24))
+    cutoff = datetime.now() - timedelta(days=months * 30)
+
+    group_map = {
+        'company': Transaction.company,
+        'type': Transaction.transaction_type,
+        'category': Transaction.category,
+    }
+    group_col = group_map.get(group_by, Transaction.company)
+
+    try:
+        results = (
+            db.session.query(
+                group_col.label('group_key'),
+                db.func.count(Transaction.id).label('transaction_count'),
+                db.func.sum(Transaction.amount).label('total_amount'),
+                db.func.avg(Transaction.amount).label('avg_amount'),
+            )
+            .filter(Transaction.user_id == current_user.id, Transaction.date >= cutoff)
+            .group_by(group_col)
+            .order_by(db.func.sum(Transaction.amount).desc())
+            .all()
+        )
+        return [
+            {
+                'group': row.group_key,
+                'transaction_count': int(row.transaction_count),
+                'total_amount': float(row.total_amount or 0),
+                'avg_amount': float(row.avg_amount or 0),
+            }
+            for row in results
+        ]
     except Exception as e:
-        flash(f'Analytics query failed: {error}', 'error')
+        flash('Analytics query failed.', 'error')
+        print(f"Analytics query failed: {e}")
         return []
 
 
@@ -309,21 +272,13 @@ def transaction_analytics():
 
 def get_transaction_by_reference(reference_number):
     """
-    VULNERABILITY 13: Unsafe transaction lookup by reference number
+    Safe transaction lookup by reference number.
     """
-    # Direct string interpolation in SQL query
-    query = f"""
-        SELECT * FROM transactions 
-        WHERE user_id = {current_user.id} 
-        AND reference_number = '{reference_number}'
-    """
-    
     try:
-        result = db.session.execute(text(query))
-        row = result.fetchone()
-        if row:
-            return db.session.get(row[0])
-        return None
+        return Transaction.query.filter_by(
+            user_id=current_user.id,
+            reference_number=reference_number
+        ).first()
     except Exception as e:
         print(f"Reference lookup error: {e}")
         return None
@@ -332,8 +287,7 @@ def get_transaction_by_reference(reference_number):
 @active_user_required  
 def export_transactions():
     """
-    VULNERABLE: Export transactions with customizable filename and format
-    Contains command injection via filename and format parameters
+    Export transactions safely to CSV.
     """
     export_results = None
 
@@ -343,7 +297,6 @@ def export_transactions():
 
         export_format = 'csv'
 
-        print(export_format, filename, date_range)
         # Get user's transactions
         days = int(date_range) if date_range.isdigit() else 30
         cutoff_date = datetime.now() - timedelta(days=days)
@@ -352,20 +305,14 @@ def export_transactions():
             Transaction.date >= cutoff_date
         ).order_by(Transaction.date.desc()).all()
 
-        # VULNERABILITY: User input directly passed to shell command
-        export_path = f"/tmp/exports/{filename}"
+        safe_filename = re.sub(r'[^a-zA-Z0-9_-]', '_', filename) or 'transactions'
+        export_dir = Path('/tmp/exports')
+        export_dir.mkdir(parents=True, exist_ok=True)
+        export_path = export_dir / safe_filename
         
         try:
-            # Create directory and file with command injection vulnerability
-            command = f"mkdir -p /tmp/exports && touch {export_path}"
-            
-    
-            # Execute the vulnerable command
-            print(f"DEBUG: Executing command: {command}")
-            result = subprocess.run(command, shell=True, capture_output=True, text=True)
-
             # Generate actual CSV content
-            with open(export_path, 'w', newline='', encoding='utf-8') as csvfile:
+            with export_path.open('w', newline='', encoding='utf-8') as csvfile:
                 writer = csv.writer(csvfile)
                 writer.writerow(['Date', 'Company', 'Type', 'Amount', 'Balance', 'Reference'])
                 
@@ -381,18 +328,15 @@ def export_transactions():
             
             # Prepare results for template display
             export_results = {
-                'success': result.returncode == 0,
-                'filename': f"{filename}.{export_format}",
+                'success': True,
+                'filename': f"{safe_filename}.{export_format}",
                 'transaction_count': len(transactions),
-                'output': result.stdout,
-                'error': result.stderr,
-                'file_exists': os.path.exists(export_path)
+                'output': '',
+                'error': '',
+                'file_exists': export_path.exists()
             }
             
-            if result.returncode == 0:
-                flash(f'Export generated successfully! results: {result.stdout}, {result.stderr}', 'success')
-            else:
-                flash('Export command failed. See details below.', 'error')
+            flash('Export generated successfully.', 'success')
 
 
         except Exception as e:
@@ -410,14 +354,19 @@ def export_transactions():
 def download_export_file():
     """Download the generated export file"""
     filename = request.args.get('filename', 'transactions.csv')
-    file_path = f"/tmp/exports/{filename.replace('.csv', '')}"  # Remove extension since we add it in export
+    safe_name = Path(filename).name
+    base_dir = Path('/tmp/exports').resolve()
+    file_path = (base_dir / safe_name.replace('.csv', '')).resolve()
     
     try:
-        if os.path.exists(file_path):
+        if not str(file_path).startswith(str(base_dir)):
+            flash('Invalid download path.', 'error')
+            return redirect(url_for('export_transactions'))
+        if file_path.exists() and file_path.is_file():
             return send_file(
                 file_path,
                 as_attachment=True,
-                download_name=filename,
+                download_name=safe_name,
                 mimetype='text/csv'
             )
         else:
@@ -431,8 +380,7 @@ def download_export_file():
 @active_user_required
 def import_transactions():
     """
-    VULNERABLE: Import transactions using YAML configuration files
-    Accepts YAML config files that can instantiate Python objects
+    Safe import parser for supported non-executable formats.
     """
     if request.method == 'POST':
         if 'import_file' not in request.files:
@@ -450,50 +398,44 @@ def import_transactions():
             file_content = file.read().decode('utf-8')
             
             if import_format == 'yaml_config':
-                # "YAML configuration files for complex import rules"
-                print(f"DEBUG: Processing YAML configuration from {file.filename}")
-                
-                # VULNERABLE: yaml.load() can execute arbitrary Python code
-                config = yaml.load(file_content, Loader=yaml.Loader)
+                config = yaml.safe_load(file_content)
+                if not isinstance(config, dict):
+                    flash('Invalid YAML configuration structure.', 'error')
+                    return redirect(url_for('import_transactions'))
 
-                # Process the configuration
-                if config:
-                    imported_count = config.get('transaction_count', 0)
-                    import_rules = config.get('import_rules', {})
-                    
-                    flash(f'YAML configuration loaded: {imported_count} transactions, {len(import_rules)} rules', 'success')
+                allowed_keys = {'transaction_count', 'import_rules', 'transactions'}
+                unknown = set(config.keys()) - allowed_keys
+                if unknown:
+                    flash(f"Unsupported YAML keys: {', '.join(sorted(unknown))}", 'error')
+                    return redirect(url_for('import_transactions'))
+
+                imported_count = int(config.get('transaction_count', 0))
+                import_rules = config.get('import_rules', {})
+                if import_rules is not None and not isinstance(import_rules, dict):
+                    flash('import_rules must be an object.', 'error')
+                    return redirect(url_for('import_transactions'))
+                flash(f'YAML configuration loaded safely: {imported_count} transactions, {len(import_rules)} rules', 'success')
                 
             elif import_format == 'json_template':
-                # "JSON template with processing instructions"
-                print(f"DEBUG: Processing JSON template from {file.filename}")
-                
                 template = json.loads(file_content)
-                
-                # VULNERABILITY: Execute any "preprocessing" commands
-                if 'preprocessing' in template:
-                    for cmd in template['preprocessing']:
-                        if 'command' in cmd:
-                            # VULNERABLE: Execute preprocessing commands
-                            result = eval(cmd['command'])
-                            print(f"DEBUG: Executed preprocessing: {cmd['command']} -> {result}")
-                
-                # Process template formulas
-                if 'formulas' in template:
-                    for formula_name, formula_code in template['formulas'].items():
-                        # VULNERABLE: eval() on template formulas
-                        result = eval(formula_code)
-                        template[f'formula_{formula_name}_result'] = result
+                if not isinstance(template, dict):
+                    flash('Invalid JSON template structure.', 'error')
+                    return redirect(url_for('import_transactions'))
+
+                allowed_keys = {'transactions', 'metadata'}
+                unknown = set(template.keys()) - allowed_keys
+                if unknown:
+                    flash(f"Unsupported JSON keys: {', '.join(sorted(unknown))}", 'error')
+                    return redirect(url_for('import_transactions'))
 
                 transactions = template.get('transactions', [])
-                flash(f'JSON template processed: {len(transactions)} transactions', 'success')
+                if not isinstance(transactions, list):
+                    flash('transactions must be an array.', 'error')
+                    return redirect(url_for('import_transactions'))
+                flash(f'JSON template processed safely: {len(transactions)} transactions', 'success')
                 
             elif import_format == 'config_script':
-                # "Configuration script for advanced import logic"
-                print(f"DEBUG: Processing configuration script from {file.filename}")
-                
-                # VULNERABLE: Execute configuration as Python code
-                exec(file_content)
-                flash('Configuration script executed successfully', 'success')
+                flash('Script-based import is disabled for security reasons.', 'error')
                 
             else:
                 # Safe CSV import (not vulnerable)

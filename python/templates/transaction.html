@@ -144,8 +144,7 @@
                         <div class="col-sm-8">
                             {% if rendered_note %}
                             <div class="mb-2">
-                                <!-- VULNERABLE: Rendered template content (allows template injection) -->
-                                {{ rendered_note | safe }}
+                                {{ rendered_note }}
                             </div>
                             {% elif transaction.note %}
                             <div class="mb-2">
@@ -258,6 +257,7 @@
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
             <form method="POST" action="{{ url_for('transaction_detail', transaction_id=transaction.id) }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <div class="modal-header">
                     <h5 class="modal-title" id="noteModalLabel">
                         <i class="bi bi-pencil me-2"></i>{{ 'Edit Personal Note' if transaction.note else 'Add Personal Note' }}

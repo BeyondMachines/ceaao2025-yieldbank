@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-bs-theme="{{ UI_THEME if UI_THEME in ['light', 'dark'] else 'light' }}">
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -12,6 +12,20 @@
     
     <!-- Custom CSS -->
     <style>
+        :root {
+            --yb-footer-bg: #f8f9fa;
+            --yb-footer-border: #dee2e6;
+            --yb-security-bg: #fff3cd;
+            --yb-security-border: #ffeaa7;
+            --yb-security-text: #856404;
+        }
+        [data-bs-theme="dark"] {
+            --yb-footer-bg: #1d2125;
+            --yb-footer-border: #343a40;
+            --yb-security-bg: #4a3b00;
+            --yb-security-border: #9a7d00;
+            --yb-security-text: #ffec99;
+        }
         .navbar-brand {
             font-weight: 700;
         }
@@ -28,8 +42,8 @@
         .footer {
             margin-top: auto;
             padding: 20px 0;
-            background-color: #f8f9fa;
-            border-top: 1px solid #dee2e6;
+            background-color: var(--yb-footer-bg);
+            border-top: 1px solid var(--yb-footer-border);
         }
         body {
             display: flex;
@@ -40,9 +54,18 @@
             flex: 1;
         }
         .alert-security {
-            background-color: #fff3cd;
-            border-color: #ffeaa7;
-            color: #856404;
+            background-color: var(--yb-security-bg);
+            border-color: var(--yb-security-border);
+            color: var(--yb-security-text);
+        }
+        .theme-toggle-btn {
+            border-color: rgba(255, 255, 255, 0.45);
+            color: #fff;
+        }
+        .theme-toggle-btn:hover {
+            border-color: rgba(255, 255, 255, 0.75);
+            color: #fff;
+            background: rgba(255, 255, 255, 0.15);
         }
     </style>
 </head>
@@ -79,6 +102,11 @@
                 </ul>
                 
                 <ul class="navbar-nav">
+                    <li class="nav-item me-2 d-flex align-items-center">
+                        <button class="btn btn-sm theme-toggle-btn" id="theme-toggle" type="button" aria-label="Toggle dark mode">
+                            <i class="bi bi-moon-stars"></i>
+                        </button>
+                    </li>
                     {% if current_user.is_authenticated %}
                     <li class="nav-item dropdown">
                         <a class="nav-link dropdown-toggle" href="#" id="aiDropdown" role="button" data-bs-toggle="dropdown">
@@ -103,6 +131,9 @@
                             </a></li>
                             <li><a class="dropdown-item" href="{{ url_for('preferences') }}">
                                 <i class="bi bi-gear me-2"></i>Preferences
+                            </a></li>
+                            <li><a class="dropdown-item" href="{{ url_for('mfa_setup') }}">
+                                <i class="bi bi-shield-lock me-2"></i>Two-Factor Auth
                             </a></li>
                             <li><a class="dropdown-item" href="{{ url_for('submit_feedback') }}">
                                 <i class="bi bi-plus-circle me-2"></i>Write Review
@@ -163,6 +194,40 @@
 
     <!-- Bootstrap 5 JS Bundle -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        (function () {
+            const root = document.documentElement;
+            const preferredTheme = "{{ UI_THEME }}";
+            const storedTheme = localStorage.getItem("ui_theme");
+            const resolveTheme = (value) => {
+                if (value === "dark" || value === "light") return value;
+                return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+            };
+
+            const sourceTheme = storedTheme || preferredTheme || "auto";
+            const activeTheme = resolveTheme(sourceTheme);
+            root.setAttribute("data-bs-theme", activeTheme);
+
+            if (!storedTheme && preferredTheme) {
+                localStorage.setItem("ui_theme", preferredTheme);
+            }
+
+            const toggleBtn = document.getElementById("theme-toggle");
+            if (!toggleBtn) return;
+            const icon = toggleBtn.querySelector("i");
+            const updateIcon = (theme) => {
+                icon.className = theme === "dark" ? "bi bi-sun" : "bi bi-moon-stars";
+            };
+            updateIcon(activeTheme);
+
+            toggleBtn.addEventListener("click", () => {
+                const nextTheme = root.getAttribute("data-bs-theme") === "dark" ? "light" : "dark";
+                root.setAttribute("data-bs-theme", nextTheme);
+                localStorage.setItem("ui_theme", nextTheme);
+                updateIcon(nextTheme);
+            });
+        })();
+    </script>
     
     <!-- Custom JavaScript -->
     {% block scripts %}{% endblock %}

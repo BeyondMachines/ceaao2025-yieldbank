@@ -14,6 +14,7 @@
                 
                 <div class="card-body p-4">
                     <form method="POST" action="{{ url_for('login') }}">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                         <div class="mb-4">
                             <label for="email" class="form-label fw-bold">Email Address</label>
                             <div class="input-group input-group-lg">
@@ -109,14 +110,7 @@
                 </div>
             </div>
             
-            <!-- Hidden Training Note (only visible to security professionals) -->
-            <!-- 
-            SQL INJECTION VULNERABILITY ACTIVE:
-            - Email field: Direct SQL injection possible
-            - Try: ' OR '1'='1' -- with any password
-            - Authentication completely bypassed
-            - Password validation disabled
-            -->
+            <!-- Security Note: SQL injection vulnerabilities have been patched in this branch. -->
         </div>
     </div>
 </div>
