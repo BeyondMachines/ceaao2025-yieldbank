@@ -47,6 +47,7 @@
                 </div>
                 <div class="card-body">
                     <form method="POST" action="{{ url_for('ai_loan_advisor') }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                         <div class="row">
                             <div class="col-md-6 mb-3">
                                 <label for="loan_amount" class="form-label fw-bold">Loan Amount ($)</label>

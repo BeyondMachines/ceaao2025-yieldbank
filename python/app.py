@@ -5,6 +5,7 @@ Initializes the Flask app with all necessary components
 from flask import Flask, request, session
 from flask_login import LoginManager
 from flask_migrate import Migrate
+from flask_wtf.csrf import CSRFProtect
 from config import Config
 from models import db, User
 import os
@@ -14,7 +15,7 @@ from sqlalchemy.exc import SQLAlchemyError
 
 from application.errors import register_error_handlers
 from application.home import index, dashboard
-from application.user import login, logout, profile, preferences
+from application.user import login, logout, profile, preferences, mfa_verify, mfa_setup
 from application.api import api_stats, api_transactions
 from application.transaction import transaction_detail, search, export_transactions, download_export_file, import_transactions, transaction_archive
 from application.feedback import feedback_list, feedback_detail, submit_feedback, feedback_by_user
@@ -73,6 +74,8 @@ def create_app(config_class=Config):
     # Initialize extensions
     login_manager = LoginManager()
     login_manager.init_app(app)
+    csrf = CSRFProtect()
+    csrf.init_app(app)
 
     @login_manager.user_loader
     def load_user(user_id):
@@ -114,7 +117,8 @@ def create_app(config_class=Config):
         response.headers.setdefault('X-Frame-Options', 'DENY')
         response.headers.setdefault('X-Content-Type-Options', 'nosniff')
         response.headers.setdefault('Referrer-Policy', 'strict-origin-when-cross-origin')
-        response.headers.setdefault('Content-Security-Policy', "default-src 'self'; object-src 'none'; frame-ancestors 'none'; base-uri 'self'")
+        response.headers.setdefault('Permissions-Policy', 'geolocation=(), microphone=(), camera=()')
+        response.headers.setdefault('Content-Security-Policy', "default-src 'self'; script-src 'self' https://cdn.jsdelivr.net; style-src 'self' https://cdn.jsdelivr.net; font-src 'self' https://cdn.jsdelivr.net; connect-src 'self'; img-src 'self' data:; object-src 'none'; frame-ancestors 'none'; base-uri 'self'")
         if request.is_secure:
             response.headers.setdefault('Strict-Transport-Security', 'max-age=31536000; includeSubDomains')
         return response
@@ -131,6 +135,8 @@ def create_app(config_class=Config):
     app.add_url_rule('/logout', 'logout', logout)
     app.add_url_rule('/profile', 'profile', profile)
     app.add_url_rule('/preferences', 'preferences', preferences, methods=['GET', 'POST'])
+    app.add_url_rule('/mfa/verify', 'mfa_verify', mfa_verify, methods=['GET', 'POST'])
+    app.add_url_rule('/mfa/setup', 'mfa_setup', mfa_setup, methods=['GET', 'POST'])
 
     # Create transaction routes
     app.add_url_rule('/transaction/<int:transaction_id>', 'transaction_detail', transaction_detail, methods=['GET', 'POST'])

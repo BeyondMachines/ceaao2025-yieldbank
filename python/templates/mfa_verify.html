@@ -1,0 +1,73 @@
+{% extends "base.html" %}
+
+{% block title %}MFA Verification - {{ BANK_NAME }}{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="row justify-content-center align-items-center" style="min-height: 60vh;">
+        <div class="col-md-6 col-lg-5 mt-5">
+            <div class="card shadow-lg">
+                <div class="card-header bg-warning text-dark text-center py-4">
+                    <h1 class="h3 mb-0"><i class="bi bi-shield-lock me-2"></i>Two-Factor Authentication</h1>
+                    <p class="mb-0 mt-2 opacity-75">Enter the 6-digit code from your authenticator app</p>
+                </div>
+                
+                <div class="card-body p-4">
+                    <form method="POST" action="{{ url_for('mfa_verify') }}">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <div class="mb-4">
+                            <label for="mfa_code" class="form-label fw-bold">Authentication Code</label>
+                            <div class="input-group input-group-lg">
+                                <span class="input-group-text bg-light">
+                                    <i class="bi bi-shield-check text-muted"></i>
+                                </span>
+                                <input 
+                                    type="text" 
+                                    class="form-control text-center" 
+                                    id="mfa_code" 
+                                    name="mfa_code" 
+                                    placeholder="000000"
+                                    required
+                                    maxlength="6"
+                                    inputmode="numeric"
+                                    autocomplete="one-time-code"
+                                    autofocus
+                                >
+                            </div>
+                            <div class="mt-2">
+                                <small class="text-muted">
+                                    <i class="bi bi-info-circle me-1"></i>
+                                    Open your authenticator app (Google Authenticator, Authy, etc.)
+                                </small>
+                            </div>
+                        </div>
+                        
+                        <div class="d-grid gap-2">
+                            <button type="submit" class="btn btn-warning btn-lg">
+                                <i class="bi bi-box-arrow-in-right me-2"></i>
+                                Verify & Sign In
+                            </button>
+                        </div>
+                    </form>
+                </div>
+                
+                <div class="card-footer bg-light">
+                    <div class="text-center">
+                        <small class="text-muted">
+                            <i class="bi bi-info-circle me-1"></i>
+                            <p>Secure Environment — MFA Required</p>
+                        </small>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="text-center mt-3">
+                <a href="{{ url_for('login') }}" class="text-decoration-none">
+                    <i class="bi bi-arrow-left me-1"></i>
+                    Back to Login
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

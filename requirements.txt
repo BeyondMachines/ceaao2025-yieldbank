@@ -21,3 +21,10 @@ requests
 
 # For YAML processing
 PyYAML
+
+# MFA / TOTP support
+pyotp
+qrcode[pil]
+
+# CSRF protection
+flask-wtf

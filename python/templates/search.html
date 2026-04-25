@@ -78,6 +78,8 @@
                 </div>
                 <div class="card-body">
                     <form method="POST" action="{{ url_for('search') }}">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                         <input type="hidden" name="search_mode" value="basic">
                         
                         <div class="row">
@@ -118,9 +120,11 @@
                 </div>
                 <div class="card-body advanced-search-panel">
                     <form method="POST" action="{{ url_for('search') }}">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                         <input type="hidden" name="search_mode" value="advanced">
                         
                     <form method="POST" action="{{ url_for('search') }}">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                         <input type="hidden" name="search_mode" value="advanced">
                         
                         <div class="row">

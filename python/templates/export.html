@@ -43,6 +43,7 @@
                 </div>
                 <div class="card-body">
                     <form method="POST" action="{{ url_for('export_transactions') }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                         <div class="row">
                             <div class="col-md-6 mb-3">
                                 <label for="filename" class="form-label">Export Filename</label>

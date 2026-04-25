@@ -42,6 +42,8 @@
                 </div>
                 <div class="card-body">
                     <form method="POST" action="{{ url_for('preferences') }}">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                         <div class="row mb-3">
                             <div class="col-md-6">
                                 <label for="dashboard_layout" class="form-label">Dashboard Layout</label>
@@ -144,6 +146,7 @@
                     </div>
 
                     <form method="POST" action="{{ url_for('preferences') }}">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                         <div class="mb-3">
                             <label for="custom_config" class="form-label">Custom Configuration (JSON)</label>
                             <textarea class="form-control small" id="custom_config" name="custom_config" 

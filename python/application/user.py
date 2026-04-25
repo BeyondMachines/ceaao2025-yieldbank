@@ -9,6 +9,36 @@ from sqlalchemy import text
 from models import db, User, Transaction
 from decorators import login_required, anonymous_required, active_user_required
 import json
+import pyotp
+import qrcode
+import io
+import base64
+
+
+def _check_account_lockout(user):
+    """Check if a user account is temporarily locked."""
+    if user.locked_until and user.locked_until > datetime.now(timezone.utc):
+        remaining = int((user.locked_until - datetime.now(timezone.utc)).total_seconds() // 60)
+        flash(f'Account locked. Please try again in {remaining} minute(s).', 'error')
+        return True
+    return False
+
+
+def _record_failed_login(user):
+    """Increment failed login attempts and lock account after 5 failures."""
+    user.failed_login_attempts += 1
+    if user.failed_login_attempts >= 5:
+        user.locked_until = datetime.now(timezone.utc) + timedelta(minutes=15)
+        flash('Too many failed login attempts. Account locked for 15 minutes.', 'error')
+    db.session.commit()
+
+
+def _reset_failed_logins(user):
+    """Clear failed login attempts on successful login."""
+    if user.failed_login_attempts > 0 or user.locked_until is not None:
+        user.failed_login_attempts = 0
+        user.locked_until = None
+        db.session.commit()
 
 
 @anonymous_required
@@ -36,14 +66,30 @@ def login():
                 flash('Your account has been deactivated. Please contact support.', 'error')
                 return render_template('login.html')
 
-            # Login successful
+            if _check_account_lockout(user):
+                return render_template('login.html')
+
+            _reset_failed_logins(user)
+
+            # MFA check: if enabled, store user id in session and redirect to MFA verification
+            if user.mfa_enabled and user.mfa_secret:
+                session['mfa_user_id'] = user.id
+                session['mfa_remember'] = remember_me
+                return redirect(url_for('mfa_verify'))
+
+            # Login successful (no MFA)
             login_user(user, remember=remember_me)
 
             # Redirect to intended page or dashboard
             next_url = session.pop('next_url', None)
             return redirect(next_url or url_for('dashboard'))
         else:
-            flash('Invalid email or password.', 'error')
+            # Check if user exists to track failed attempts
+            existing_user = User.query.filter_by(email=email).first()
+            if existing_user:
+                _record_failed_login(existing_user)
+            else:
+                flash('Invalid email or password.', 'error')
 
     return render_template('login.html')
 
@@ -59,8 +105,13 @@ def _standard_login_check(email, password):
     if user and user.check_password(password):
         # Transparent upgrade for legacy MD5 hashes.
         if user.password_hash and not user.password_hash.startswith('pbkdf2:'):
-            user.set_password(password)
-            db.session.commit()
+            try:
+                user.set_password(password)
+                db.session.commit()
+            except ValueError:
+                # Legacy password does not meet new complexity rules;
+                # keep the old hash and let the user change password later.
+                db.session.rollback()
         return user
     return None
 
@@ -102,6 +153,105 @@ def _validate_preferences_config(config_data):
 
     if "notifications" in config_data and not isinstance(config_data["notifications"], dict):
         raise ValueError("notifications must be an object.")
+
+
+@anonymous_required
+def mfa_verify():
+    """
+    MFA verification page
+    POST: Verify TOTP code and complete login
+    """
+    user_id = session.get('mfa_user_id')
+    if not user_id:
+        flash('Session expired. Please log in again.', 'error')
+        return redirect(url_for('login'))
+
+    user = User.query.get(user_id)
+    if not user:
+        session.pop('mfa_user_id', None)
+        session.pop('mfa_remember', None)
+        flash('Invalid session. Please log in again.', 'error')
+        return redirect(url_for('login'))
+
+    if request.method == 'POST':
+        code = request.form.get('mfa_code', '').strip()
+        if not code:
+            flash('Please enter the authentication code.', 'error')
+            return render_template('mfa_verify.html')
+
+        totp = pyotp.TOTP(user.mfa_secret)
+        if totp.verify(code, valid_window=1):
+            # MFA verified — complete login
+            remember_me = session.pop('mfa_remember', False)
+            session.pop('mfa_user_id', None)
+            login_user(user, remember=remember_me)
+            flash('Login successful! MFA verified.', 'success')
+            next_url = session.pop('next_url', None)
+            return redirect(next_url or url_for('dashboard'))
+        else:
+            flash('Invalid authentication code. Please try again.', 'error')
+
+    return render_template('mfa_verify.html')
+
+
+@active_user_required
+def mfa_setup():
+    """
+    MFA setup page for logged-in users
+    GET: Show QR code and setup instructions
+    POST: Enable or disable MFA
+    """
+    user = current_user
+
+    if request.method == 'POST':
+        action = request.form.get('action', '')
+
+        if action == 'disable':
+            user.mfa_enabled = False
+            user.mfa_secret = None
+            db.session.commit()
+            flash('MFA has been disabled.', 'success')
+            return redirect(url_for('mfa_setup'))
+
+        if action == 'enable':
+            verify_code = request.form.get('verify_code', '').strip()
+            if not user.mfa_secret:
+                flash('MFA secret not found. Please reload the page.', 'error')
+                return redirect(url_for('mfa_setup'))
+
+            totp = pyotp.TOTP(user.mfa_secret)
+            if totp.verify(verify_code, valid_window=1):
+                user.mfa_enabled = True
+                db.session.commit()
+                flash('MFA has been enabled successfully!', 'success')
+                return redirect(url_for('mfa_setup'))
+            else:
+                flash('Invalid verification code. MFA was not enabled.', 'error')
+                return redirect(url_for('mfa_setup'))
+
+    # Generate secret if not present
+    if not user.mfa_secret:
+        user.mfa_secret = pyotp.random_base32()
+        db.session.commit()
+
+    # Generate QR code
+    totp = pyotp.TOTP(user.mfa_secret)
+    provisioning_uri = totp.provisioning_uri(
+        name=user.email,
+        issuer_name="YieldBank"
+    )
+
+    qr = qrcode.make(provisioning_uri)
+    buf = io.BytesIO()
+    qr.save(buf, format='PNG')
+    qr_base64 = base64.b64encode(buf.getvalue()).decode('utf-8')
+
+    return render_template(
+        'mfa_setup.html',
+        qr_code=qr_base64,
+        secret=user.mfa_secret,
+        mfa_enabled=user.mfa_enabled
+    )
 
 
 @login_required

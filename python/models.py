@@ -14,6 +14,22 @@ from datetime import datetime, timezone
 # Initialize SQLAlchemy instance
 db = SQLAlchemy()
 
+
+def _validate_password_complexity(password):
+    """Enforce minimum password complexity requirements."""
+    if not isinstance(password, str):
+        raise ValueError("Password must be a string.")
+    if len(password) < 8:
+        raise ValueError("Password must be at least 8 characters long.")
+    if not any(c.isupper() for c in password):
+        raise ValueError("Password must contain at least one uppercase letter.")
+    if not any(c.islower() for c in password):
+        raise ValueError("Password must contain at least one lowercase letter.")
+    if not any(c.isdigit() for c in password):
+        raise ValueError("Password must contain at least one digit.")
+    if not any(c in "!@#$%^&*()-_=+[]{}|;:'\",.<>?/`~" for c in password):
+        raise ValueError("Password must contain at least one special character.")
+
 class User(UserMixin, db.Model):
     """
     User model for storing customer account information
@@ -31,6 +47,10 @@ class User(UserMixin, db.Model):
     balance = db.Column(db.Numeric(12, 2), default=Decimal('1000.00'))
     created_at = db.Column(db.DateTime(timezone=True), default=datetime.now(timezone.utc)) 
     is_active = db.Column(db.Boolean, default=True)
+    mfa_secret = db.Column(db.String(32), nullable=True)
+    mfa_enabled = db.Column(db.Boolean, default=False)
+    failed_login_attempts = db.Column(db.Integer, default=0)
+    locked_until = db.Column(db.DateTime(timezone=True), nullable=True)
     
     # Relationship to transactions
     transactions = db.relationship('Transaction', backref='user', lazy=True, cascade='all, delete-orphan')
@@ -55,6 +75,7 @@ class User(UserMixin, db.Model):
 
     def set_password(self, password):
         """Hash and store password using Werkzeug PBKDF2."""
+        _validate_password_complexity(password)
         self.password_hash = generate_password_hash(password, method='pbkdf2:sha256')
 
     def check_password(self, password):

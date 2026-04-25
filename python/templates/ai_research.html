@@ -46,6 +46,7 @@
                 </div>
                 <div class="card-body">
                     <form method="POST" action="{{ url_for('ai_transaction_research') }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                         <div class="mb-4">
                             <label for="research_query" class="form-label fw-bold">Research Question</label>
                             <textarea class="form-control" id="research_query" name="research_query" 
